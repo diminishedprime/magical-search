@@ -122,8 +122,6 @@ fn main() -> Result<(), AppError> {
             let updated_grid_data = grid_search_results(&entry_conn, &entry.text(), 16)
                 .expect("Failed to get initial grid data");
 
-            println!("{:?}", &updated_grid_data.iter().filter(|x| x.image_data_small.is_none()).collect::<Vec<_>>());
-
             card_grid::update_grid(&cloned_grid, updated_grid_data, 4, &default_image)
                 .expect("Failed to update gui grid");
         });
