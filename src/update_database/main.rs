@@ -1,69 +1,22 @@
+mod types;
+
 use anyhow::{Context, Result};
 use itertools::Itertools;
 use reqwest::Client;
 use rusqlite::params;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+
 use serde_json::{self, Deserializer};
 use std::fs::File;
 use std::io::BufReader;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-use thiserror::Error;
 use tokio::time::sleep;
+use types::Card;
 
-static CARD_LIMIT: usize = 200;
 static CARD_CHUNK_SIZE: usize = 50;
 // Update this to true to update the card data from the Scryfall API
-static UPDATE_DATA: bool = false;
-
-#[derive(Error, Debug)]
-enum BuildError {
-    #[error("Failed to open JSON file: {0}")]
-    JsonFileError(#[from] std::io::Error),
-
-    #[error("Failed to parse JSON: {0}")]
-    JsonParseError(#[from] serde_json::Error),
-
-    #[error("Failed to open SQLite database: {0}")]
-    DatabaseError(#[from] rusqlite::Error),
-}
-
-type Uuid = String;
-type Url = String;
-
-#[derive(Debug, Deserialize, Serialize)]
-struct ImageUris {
-    small: Option<Url>,
-    normal: Option<Url>,
-    large: Option<Url>,
-    png: Option<Url>,
-    art_crop: Option<Url>,
-    border_crop: Option<Url>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct Card {
-    id: Uuid,
-    name: String,
-    lang: Option<String>,
-    object: String,
-    layout: String,
-    arena_id: Option<i64>,
-    mtgo_id: Option<i64>,
-    mtgo_foil_id: Option<i64>,
-    tcgplayer_id: Option<i64>,
-    tcgplayer_etched_id: Option<i64>,
-    cardmarket_id: Option<i64>,
-    oracle_id: Option<Uuid>,
-    prints_search_uri: Option<Url>,
-    rulings_uri: Option<Url>,
-    scryfall_uri: Option<Url>,
-    uri: Option<Url>,
-    cmc: Option<f64>,
-    image_uris: Option<ImageUris>,
-}
 
 async fn run() -> Result<()> {
     let target_dir = PathBuf::from("target");
@@ -83,7 +36,6 @@ async fn run() -> Result<()> {
 
     let cards = iter_json_array::<Card, BufReader<_>>(reader);
     // Limit this to avoid unnecessarily hitting the API until I'm confident I have this working well.
-    let cards = cards.take(CARD_LIMIT);
     let card_chunks = cards.chunks(CARD_CHUNK_SIZE);
 
     let mut conn = rusqlite::Connection::open("cards.sqlite")?;
@@ -318,8 +270,5 @@ pub fn iter_json_array<T: DeserializeOwned, R: Read>(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    if UPDATE_DATA {
-        run().await?;
-    }
-    Ok(())
+    run().await
 }
