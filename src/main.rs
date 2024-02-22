@@ -3,8 +3,10 @@ mod card_grid;
 use gdk_pixbuf::glib;
 use gtk::Entry;
 use gtk::{prelude::*, Application, ApplicationWindow, Grid};
+use reqwest::blocking::Client;
 use rusqlite::Connection;
 use rusqlite::Error as RusqliteError;
+use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -24,6 +26,8 @@ pub enum AppError {
     SQLQueryError(#[from] RusqliteError),
     #[error("Generic glib Error")]
     GlibError(#[from] glib::Error),
+    #[error("Request Error")]
+    RequestError(#[from] reqwest::Error),
 }
 
 #[derive(Debug)]
@@ -33,16 +37,46 @@ pub(crate) struct GridSearchResult {
     pub(crate) image_data_small: Option<Vec<u8>>,
 }
 
+static GET_DEFAULT_IMAGE_URI_SQL: &str = r#"
+SELECT small
+FROM card_image_uris
+WHERE card_id = :card_id
+LIMIT 1;
+"#;
+
+static GET_GRID_DATA_SQL: &str = r#"
+SELECT c.name, c.cmc, ciu.small AS small_image_uri
+FROM cards c
+JOIN card_image_uris ciu ON c.id = ciu.card_id
+LIMIT :limit;
+"#;
+
+static GET_GRID_DATA_WITH_SEARCH: &str = r#"
+SELECT c.name, c.cmc, ciu.small AS small_image_uri
+FROM cards c
+JOIN card_image_uris ciu ON c.id = ciu.card_id
+WHERE c.name LIKE :search
+LIMIT :limit;
+"#;
+
 // TODO - I could probably pick a better default image here.
-fn get_default_image(
-    connection: &Connection
-) -> Result<Vec<u8>, AppError> {
+fn get_default_image(connection: &Connection) -> Result<Vec<u8>, AppError> {
     let saproling_token_id = "006c118e-b5c7-4726-acee-59132f23e4fc";
-    let result = connection
-        .prepare(&format!("SELECT image_data_small FROM cards WHERE id='{id}' LIMIT 1", id=saproling_token_id))?.query_map([], |row| {
-            Ok(row.get(0)?)
-        })?.collect::<Result<Vec<_>, _>>()?;
-    result.get(0).map(|x:&Vec<u8>| x.clone()).ok_or(AppError::SQLQueryError(RusqliteError::QueryReturnedNoRows))
+    let image_uri = connection
+        .prepare(GET_DEFAULT_IMAGE_URI_SQL)?
+        .query_map(&[(":card_id", &saproling_token_id)], |row| Ok(row.get(0)?))?
+        .collect::<Result<Vec<String>, _>>()?;
+    let image_uri = image_uri
+        .get(0)
+        .ok_or(AppError::SQLQueryError(RusqliteError::QueryReturnedNoRows))?;
+    download_image(image_uri)
+}
+
+fn download_image(uri: &str) -> Result<Vec<u8>, AppError> {
+    let client = Client::new();
+    let response = client.get(uri).send()?;
+    let body = response.bytes()?;
+    Ok(body.to_vec())
 }
 
 fn grid_search_results(
@@ -52,25 +86,50 @@ fn grid_search_results(
 ) -> Result<Vec<GridSearchResult>, AppError> {
     // TODO - eventually the filter_text should support what scryfall supports.
     Ok(if filter_text.is_empty() {
-        connection
-        .prepare(&format!("SELECT DISTINCT name, cmc, image_data_small FROM cards WHERE lang='en' LIMIT {max_results}", max_results=max_results))?.query_map([], |row| {
-            Ok(GridSearchResult {
-                _name: row.get(0)?,
-                _cmc: row.get(1)?,
-                image_data_small: row.get(2)?,
+        let grid_data = connection
+            .prepare(GET_GRID_DATA_SQL)?
+            .query_map(&[(":limit", &max_results.to_string())], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })?
+            .collect::<Result<Vec<(String, f64, Option<String>)>, _>>()?;
+        grid_data
+            .iter()
+            .map(|(name, cmc, image_uri)| {
+                let image_data = if let Some(uri) = image_uri {
+                    Some(download_image(uri)?)
+                } else {
+                    None
+                };
+                Ok(GridSearchResult {
+                    _name: name.to_string(),
+                    _cmc: *cmc,
+                    image_data_small: image_data,
+                })
             })
-        })?.collect::<Result<Vec<_>, _>>()?
+            .collect::<Result<Vec<_>, AppError>>()?
     } else {
-        connection
-        .prepare(&format!("SELECT DISTINCT name, cmc, image_data_small FROM cards WHERE lang='en' and name LIKE ? LIMIT {max_results}", max_results=max_results))?.
-        query_map([&format!("%{}%", filter_text)], |row| {
-            Ok(GridSearchResult {
-                _name: row.get(0)?,
-                _cmc: row.get(1)?,
-                image_data_small: row.get(2)?,
-            })
+        let grid_data = connection
+        .prepare(GET_GRID_DATA_WITH_SEARCH)?.
+        query_map(
+            &[(":search", &format!("%{}%", filter_text)), (":limit", &max_results.to_string())], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
         })?
-        .collect::<Result<Vec<_>, _>>()?
+        .collect::<Result<Vec<(String, f64, Option<String>)>, _>>()?;
+        grid_data
+            .iter()
+            .map(|(name, cmc, image_uri)| {
+                let image_data = if let Some(uri) = image_uri {
+                    Some(download_image(uri)?)
+                } else {
+                    None
+                };
+                Ok(GridSearchResult {
+                    _name: name.to_string(),
+                    _cmc: *cmc,
+                    image_data_small: image_data,
+                })
+            })
+            .collect::<Result<Vec<_>, AppError>>()?
     })
 }
 
@@ -78,8 +137,10 @@ fn main() -> Result<(), AppError> {
     let application = Application::builder()
         .application_id("io.mjh.magical_search")
         .build();
+    let target_dir = PathBuf::from("target");
+    let cards_db_file_path = target_dir.join("cards.sqlite");
     let conn = Arc::new(
-        rusqlite::Connection::open("cards.sqlite").map_err(|_| AppError::SQLConnectionError)?,
+        rusqlite::Connection::open(cards_db_file_path).map_err(|_| AppError::SQLConnectionError)?,
     );
     let default_image = get_default_image(&conn)?;
     application.connect_activate(move |app| {
@@ -93,7 +154,8 @@ fn main() -> Result<(), AppError> {
             .row_spacing(4)
             .build();
 
-        card_grid::update_grid(&grid, initial_grid_data, 4, &default_image).expect("Failed to update the gui grid");
+        card_grid::update_grid(&grid, initial_grid_data, 4, &default_image)
+            .expect("Failed to update the gui grid");
 
         let entry = Entry::builder().placeholder_text("Filter...").build();
 
