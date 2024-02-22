@@ -3,24 +3,175 @@ mod types;
 use anyhow::{Context, Result};
 use itertools::Itertools;
 use reqwest::Client;
-use rusqlite::params;
+use rusqlite::named_params;
 use serde::de::DeserializeOwned;
-
 use serde_json::{self, Deserializer};
 use std::fs::File;
 use std::io::BufReader;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
-use std::time::Duration;
-use tokio::time::sleep;
 use types::Card;
 
-static CARD_CHUNK_SIZE: usize = 50;
+static CARD_CHUNK_SIZE: usize = 1000;
 // Update this to true to update the card data from the Scryfall API
+
+static CREATE_TABLE_SQL: &str = r#"
+CREATE TABLE IF NOT EXISTS cards (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    lang TEXT,
+    object TEXT NOT NULL,
+    layout TEXT,
+    arena_id INTEGER,
+    mtgo_id INTEGER,
+    mtgo_foil_id INTEGER,
+    tcgplayer_id INTEGER,
+    tcgplayer_etched_id INTEGER,
+    cardmarket_id INTEGER,
+    oracle_id TEXT,
+    prints_search_uri TEXT,
+    rulings_uri TEXT,
+    scryfall_uri TEXT,
+    uri TEXT,
+    cmc DECIMAL(32,16),
+    power TEXT,
+    toughness TEXT,
+    flavor_text TEXT,
+    oracle_text TEXT
+);
+
+CREATE TABLE IF NOT EXISTS card_colors (
+    card_id TEXT,
+    color TEXT,
+    FOREIGN KEY (card_id) REFERENCES cards(id)
+);
+
+CREATE TABLE IF NOT EXISTS card_image_uris (
+    card_id TEXT,
+    small TEXT,
+    normal TEXT,
+    large TEXT,
+    png TEXT,
+    art_crop TEXT,
+    border_crop TEXT,
+    FOREIGN KEY (card_id) REFERENCES cards(id)
+);
+
+CREATE TABLE IF NOT EXISTS card_color_identity (
+    card_id TEXT,
+    color_identity TEXT,
+    FOREIGN KEY (card_id) REFERENCES cards(id)
+);
+
+CREATE TABLE IF NOT EXISTS card_keywords (
+    card_id TEXT,
+    keyword TEXT,
+    FOREIGN KEY (card_id) REFERENCES cards(id)
+);
+"#;
+
+static ADD_CARD_SQL: &str = r#"
+INSERT OR REPLACE INTO cards (
+    id,
+    name,
+    lang,
+    object,
+    layout,
+    arena_id,
+    mtgo_id,
+    mtgo_foil_id,
+    tcgplayer_id,
+    tcgplayer_etched_id,
+    cardmarket_id,
+    oracle_id,
+    prints_search_uri,
+    rulings_uri,
+    scryfall_uri,
+    uri,
+    cmc,
+    power,
+    toughness,
+    flavor_text,
+    oracle_text
+) VALUES (
+    :id,
+    :name,
+    :lang,
+    :object,
+    :layout,
+    :arena_id,
+    :mtgo_id,
+    :mtgo_foil_id,
+    :tcgplayer_id,
+    :tcgplayer_etched_id,
+    :cardmarket_id,
+    :oracle_id,
+    :prints_search_uri,
+    :rulings_uri,
+    :scryfall_uri,
+    :uri,
+    :cmc,
+    :power,
+    :toughness,
+    :flavor_text,
+    :oracle_text
+)
+"#;
+
+const ADD_CARD_COLORS_SQL: &str = r#"
+INSERT OR REPLACE INTO card_colors (
+    card_id,
+    color
+) VALUES (
+    :card_id,
+    :color
+)
+"#;
+
+const ADD_KEYWORDS_SQL: &str = r#"
+INSERT OR REPLACE INTO card_keywords (
+    card_id,
+    keyword
+) VALUES (
+    :card_id,
+    :keyword
+)
+"#;
+
+const ADD_COLOR_IDENTITY_SQL: &str = r#"
+INSERT OR REPLACE INTO card_color_identity (
+    card_id,
+    color_identity
+) VALUES (
+    :card_id,
+    :color_identity
+)
+"#;
+
+const ADD_IMAGE_URIS_SQL: &str = r#"
+INSERT OR REPLACE INTO card_image_uris (
+    card_id,
+    small,
+    normal,
+    large,
+    png,
+    art_crop,
+    border_crop
+) VALUES (
+    :card_id,
+    :small,
+    :normal,
+    :large,
+    :png,
+    :art_crop,
+    :border_crop
+)
+"#;
 
 async fn run() -> Result<()> {
     let target_dir = PathBuf::from("target");
     let json_file_path = target_dir.join("cards.json");
+    let cards_db_file_path = target_dir.join("cards.sqlite");
 
     tokio::fs::create_dir_all(&target_dir)
         .await
@@ -35,182 +186,117 @@ async fn run() -> Result<()> {
     let reader = BufReader::new(file);
 
     let cards = iter_json_array::<Card, BufReader<_>>(reader);
-    // Limit this to avoid unnecessarily hitting the API until I'm confident I have this working well.
     let card_chunks = cards.chunks(CARD_CHUNK_SIZE);
 
-    let mut conn = rusqlite::Connection::open("cards.sqlite")?;
-    conn.execute(
-        "
-        CREATE TABLE IF NOT EXISTS cards (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            lang TEXT,
-            object TEXT NOT NULL,
-            layout TEXT,
-            arena_id INTEGER,
-            mtgo_id INTEGER,
-            mtgo_foil_id INTEGER,
-            tcgplayer_id INTEGER,
-            tcgplayer_etched_id INTEGER,
-            cardmarket_id INTEGER,
-            oracle_id TEXT,
-            prints_search_uri TEXT,
-            rulings_uri TEXT,
-            scryfall_uri TEXT,
-            uri TEXT,
-            cmc	Decimal(32,16),
-            image_uri_small TEXT,
-            image_uri_normal TEXT,
-            image_uri_large TEXT,
-            image_uri_png TEXT,
-            image_uri_art_crop TEXT,
-            image_uri_border_crop TEXT,
-            image_data_small BLOB
-        )",
-        params![],
-    )?;
+    let mut conn = rusqlite::Connection::open(cards_db_file_path)?;
 
-    let mut tx = conn.transaction()?;
+    conn.execute_batch(CREATE_TABLE_SQL)?;
+
+    let mut total_cards = 0;
     for chunk in &card_chunks {
         let mut group = 0;
+        let mut tx = conn.transaction()?;
         for card in chunk {
             let card = card?;
             group = group + 1;
             {
-                let mut stmt = tx.prepare(
-                    "
-        INSERT OR REPLACE INTO cards (
-            id,
-            name,
-            lang,
-            object,
-            layout,
-            arena_id,
-            mtgo_id,
-            mtgo_foil_id,
-            tcgplayer_id,
-            tcgplayer_etched_id,
-            cardmarket_id,
-            oracle_id,
-            prints_search_uri,
-            rulings_uri,
-            scryfall_uri,
-            uri,
-            cmc,
-            image_uri_small,
-            image_uri_normal,
-            image_uri_large,
-            image_uri_png,
-            image_uri_art_crop,
-            image_uri_border_crop,
-            image_data_small
-        ) VALUES (
-            ?, -- id
-            ?, -- name
-            ?, -- lang
-            ?, -- object
-            ?, -- layout
-            ?, -- arena_id
-            ?, -- mtgo_id
-            ?, -- mtgo_foil_id
-            ?, -- tcgplayer_id
-            ?, -- tcgplayer_etched_id
-            ?, -- cardmarket_id
-            ?, -- oracle_id
-            ?, -- prints_search_uri
-            ?, -- rulings_uri
-            ?, -- scryfall_uri
-            ?, -- uri
-            ?, -- cmc
-            ?, -- image_uri_small
-            ?, -- image_uri_normal
-            ?, -- image_uri_large
-            ?, -- image_uri_png
-            ?, -- image_uri_art_crop
-            ?, -- image_uri_border_crop
-            ?  -- image_data_small
-        )
-    ",
+                tx.execute(
+                    ADD_CARD_SQL,
+                    named_params! {
+                    ":id": card.id,
+                    ":name": card.name,
+                    ":lang": card.lang,
+                    ":object": card.object,
+                    ":layout": card.layout,
+                    ":arena_id": card.arena_id,
+                    ":mtgo_id": card.mtgo_id,
+                    ":mtgo_foil_id": card.mtgo_foil_id,
+                    ":tcgplayer_id": card.tcgplayer_id,
+                    ":tcgplayer_etched_id": card.tcgplayer_etched_id,
+                    ":cardmarket_id": card.cardmarket_id,
+                    ":oracle_id": card.oracle_id,
+                    ":prints_search_uri": card.prints_search_uri,
+                    ":rulings_uri": card.rulings_uri,
+                    ":scryfall_uri": card.scryfall_uri,
+                    ":uri": card.uri,
+                    ":cmc": card.cmc,
+                    ":power": card.power,
+                    ":toughness": card.toughness,
+                    ":flavor_text": card.flavor_text,
+                    ":oracle_text": card.oracle_text,
+                    },
                 )?;
-
-                let mut image_data = None;
-                if let Some(image_uris) = &card.image_uris {
-                    if let Some(small) = &image_uris.small {
-                        image_data = download_image(&small).await.ok();
+                if let Some(colors) = card.colors {
+                    for color in colors {
+                        tx.execute(
+                            ADD_CARD_COLORS_SQL,
+                            named_params! {
+                                ":card_id": &card.id,
+                                ":color": color,
+                            },
+                        )?;
                     }
                 }
-                stmt.execute(params![
-                    card.id,
-                    card.name,
-                    card.lang,
-                    card.object,
-                    card.layout,
-                    card.arena_id,
-                    card.mtgo_id,
-                    card.mtgo_foil_id,
-                    card.tcgplayer_id,
-                    card.tcgplayer_etched_id,
-                    card.cardmarket_id,
-                    card.oracle_id,
-                    card.prints_search_uri,
-                    card.rulings_uri,
-                    card.scryfall_uri,
-                    card.uri,
-                    card.cmc,
-                    card.image_uris.as_ref().map(|u| u.small.clone()),
-                    card.image_uris.as_ref().map(|u| u.normal.clone()),
-                    card.image_uris.as_ref().map(|u| u.large.clone()),
-                    card.image_uris.as_ref().map(|u| u.png.clone()),
-                    card.image_uris.as_ref().map(|u| u.art_crop.clone()),
-                    card.image_uris.as_ref().map(|u| u.border_crop.clone()),
-                    image_data
-                ])?;
+                for keyword in &card.keywords {
+                    tx.execute(
+                        ADD_KEYWORDS_SQL,
+                        named_params! {
+                            ":card_id": &card.id,
+                            ":keyword": keyword,
+                        },
+                    )?;
+                }
+                for color_identity in &card.color_identity {
+                    tx.execute(
+                        ADD_COLOR_IDENTITY_SQL,
+                        named_params! {
+                            ":card_id": &card.id,
+                            ":color_identity": color_identity,
+                        },
+                    )?;
+                }
+                if let Some(image_uris) = &card.image_uris {
+                    tx.execute(
+                        ADD_IMAGE_URIS_SQL,
+                        named_params! {
+                        ":card_id": &card.id,
+                        ":small": image_uris.small,
+                        ":normal": image_uris.normal,
+                        ":large": image_uris.large,
+                        ":png": image_uris.png,
+                        ":art_crop": image_uris.art_crop,
+                        ":border_crop": image_uris.border_crop
+                        },
+                    )?;
+                }
+                tx.commit()?;
+                tx = conn.transaction()?;
             }
         }
-        tx.commit()?;
-        println!("Successfully imported {} cards into the database.", group);
-        println!("Waiting for the next batch...");
-        tx = conn.transaction()?;
-        sleep(Duration::from_secs(1)).await;
+        total_cards += group;
+        println!("Inserted {} total cards", total_cards);
     }
 
     Ok(())
 }
 
 async fn download_json_from_api(path: &Path) -> Result<()> {
-    // Fetch the JSON data from the API
     let client = Client::new();
-    // TODO - Ideally this is
     let response = client
-        .get("https://data.scryfall.io/all-cards/all-cards-20240217101517.json")
+        .get("https://data.scryfall.io/default-cards/default-cards-20240220220632.json")
         .send()
         .await
         .context("Failed to send HTTP request")?;
 
-    // Create a file and write the JSON data to it
     let mut file = tokio::fs::File::create(&path)
         .await
         .with_context(|| format!("Failed to create file: {:?}", &path))?;
+
     tokio::io::copy(&mut response.bytes().await?.as_ref(), &mut file)
         .await
         .context("Failed to write JSON data to file")?;
 
     Ok(())
-}
-
-async fn download_image(url: &str) -> Result<Vec<u8>, String> {
-    let client = Client::new();
-    let response = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| format!("Error fetching image: {:?}", &e))?;
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| format!("Error fetching image: {:?}", &e))?
-        .to_vec();
-    Ok(bytes)
 }
 
 fn read_skipping_ws(mut reader: impl Read) -> io::Result<u8> {
