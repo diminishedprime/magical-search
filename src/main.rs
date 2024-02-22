@@ -4,7 +4,7 @@ use gdk_pixbuf::glib;
 use gtk::Entry;
 use gtk::{prelude::*, Application, ApplicationWindow, Grid};
 use reqwest::blocking::Client;
-use rusqlite::Connection;
+use rusqlite::{named_params, Connection, OptionalExtension};
 use rusqlite::Error as RusqliteError;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -28,48 +28,75 @@ pub enum AppError {
     GlibError(#[from] glib::Error),
     #[error("Request Error")]
     RequestError(#[from] reqwest::Error),
+#[error("No default image could be found")]
+NoDefaultImage
 }
 
 #[derive(Debug)]
 pub(crate) struct GridSearchResult {
     pub(crate) _name: String,
-    pub(crate) _cmc: f64,
+    pub(crate) _cmc: Option<f64>,
     pub(crate) image_data_small: Option<Vec<u8>>,
 }
 
-static GET_DEFAULT_IMAGE_URI_SQL: &str = r#"
-SELECT small
-FROM card_image_uris
-WHERE card_id = :card_id
-LIMIT 1;
-"#;
-
 static GET_GRID_DATA_SQL: &str = r#"
-SELECT c.name, c.cmc, ciu.small AS small_image_uri
-FROM cards c
-JOIN card_image_uris ciu ON c.id = ciu.card_id
+SELECT id, name, cmc 
+FROM cards
 LIMIT :limit;
 "#;
 
 static GET_GRID_DATA_WITH_SEARCH: &str = r#"
-SELECT c.name, c.cmc, ciu.small AS small_image_uri
-FROM cards c
-JOIN card_image_uris ciu ON c.id = ciu.card_id
-WHERE c.name LIKE :search
+SELECT id, name, cmc 
+FROM cards
+WHERE name LIKE :search
 LIMIT :limit;
 "#;
+
+static GET_IMAGE_SQL: &str = r#"
+SELECT ciu.small AS small_image_uri, cib.small AS small_blob
+FROM cards c
+JOIN card_image_uris ciu ON c.id = ciu.card_id
+LEFT JOIN card_image_blobs cib ON c.id = cib.card_id
+WHERE c.id = :card_id;
+"#;
+
+static WRITE_IMAGE_BLOB_SQL: &str = r#"
+INSERT INTO card_image_blobs (
+    card_id, 
+    small
+) VALUES (
+    :card_id,
+    :small_blob
+);
+"#;
+
+fn get_cached_image(connection: &Connection, card_id: &str) -> Result<Option<Vec<u8>>, AppError> {
+    let image_uri  = connection
+        .prepare(GET_IMAGE_SQL)?
+        .query_row(&[(":card_id", &card_id)], |row| { 
+            let image_uri: Option<String> = row.get(0)?;
+            let image_blob: Option<Vec<u8>> = row.get(1)?;
+            Ok((image_uri, image_blob))
+        }).optional()?;
+    if let Some((_, Some(blob))) = image_uri {
+        Ok(Some(blob))
+    } else if let Some((Some(small_uri), _)) = image_uri {
+         let blob = download_image(&small_uri)?;
+         connection.execute(WRITE_IMAGE_BLOB_SQL, named_params! {
+            ":card_id": card_id,
+            ":small_blob": blob,
+         })?;
+         Ok(Some(blob))
+    } else {
+        Ok(None)
+    }
+}
 
 // TODO - I could probably pick a better default image here.
 fn get_default_image(connection: &Connection) -> Result<Vec<u8>, AppError> {
     let saproling_token_id = "006c118e-b5c7-4726-acee-59132f23e4fc";
-    let image_uri = connection
-        .prepare(GET_DEFAULT_IMAGE_URI_SQL)?
-        .query_map(&[(":card_id", &saproling_token_id)], |row| Ok(row.get(0)?))?
-        .collect::<Result<Vec<String>, _>>()?;
-    let image_uri = image_uri
-        .get(0)
-        .ok_or(AppError::SQLQueryError(RusqliteError::QueryReturnedNoRows))?;
-    download_image(image_uri)
+    let image = get_cached_image(connection, &saproling_token_id)?;
+    image.ok_or(AppError::NoDefaultImage)
 }
 
 fn download_image(uri: &str) -> Result<Vec<u8>, AppError> {
@@ -91,15 +118,11 @@ fn grid_search_results(
             .query_map(&[(":limit", &max_results.to_string())], |row| {
                 Ok((row.get(0)?, row.get(1)?, row.get(2)?))
             })?
-            .collect::<Result<Vec<(String, f64, Option<String>)>, _>>()?;
+            .collect::<Result<Vec<(String, String, Option<f64>)>, _>>()?;
         grid_data
             .iter()
-            .map(|(name, cmc, image_uri)| {
-                let image_data = if let Some(uri) = image_uri {
-                    Some(download_image(uri)?)
-                } else {
-                    None
-                };
+            .map(|(id, name, cmc)| {
+                let image_data = get_cached_image(&connection, &id)?;
                 Ok(GridSearchResult {
                     _name: name.to_string(),
                     _cmc: *cmc,
@@ -114,15 +137,11 @@ fn grid_search_results(
             &[(":search", &format!("%{}%", filter_text)), (":limit", &max_results.to_string())], |row| {
                 Ok((row.get(0)?, row.get(1)?, row.get(2)?))
         })?
-        .collect::<Result<Vec<(String, f64, Option<String>)>, _>>()?;
+        .collect::<Result<Vec<(String, String, Option<f64>)>, _>>()?;
         grid_data
             .iter()
-            .map(|(name, cmc, image_uri)| {
-                let image_data = if let Some(uri) = image_uri {
-                    Some(download_image(uri)?)
-                } else {
-                    None
-                };
+            .map(|(id, name, cmc )| {
+                let image_data = get_cached_image(&connection, &id)?;
                 Ok(GridSearchResult {
                     _name: name.to_string(),
                     _cmc: *cmc,

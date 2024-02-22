@@ -57,6 +57,17 @@ CREATE TABLE IF NOT EXISTS card_image_uris (
     FOREIGN KEY (card_id) REFERENCES cards(id)
 );
 
+CREATE TABLE IF NOT EXISTS card_image_blobs (
+    card_id TEXT,
+    small BLOB,
+    normal BLOB,
+    large BLOB,
+    png BLOB,
+    art_crop BLOB,
+    border_crop BLOB,
+    FOREIGN KEY (card_id) REFERENCES cards(id)
+);
+
 CREATE TABLE IF NOT EXISTS card_color_identity (
     card_id TEXT,
     color_identity TEXT,
