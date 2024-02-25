@@ -1,15 +1,13 @@
-use {
-    crate::{
-        card::Card, db::GET_CARDS_NAME_LIKE, MagicalSearch, Message, MessageError, CARDS_PER_ROW,
-        LIMIT,
-    },
-    iced::{
-        futures::{stream::FuturesOrdered, TryStreamExt},
-        widget::{Column, Row},
-        Element,
-    },
-    itertools::Itertools,
-    tokio_rusqlite::Connection,
+use iced::{
+    futures::{stream::FuturesOrdered, TryStreamExt},
+    widget::{Column, Row},
+    Element,
+};
+use itertools::Itertools;
+use tokio_rusqlite::Connection;
+
+use crate::{
+    card::Card, db::GET_CARDS_NAME_LIKE, MagicalSearch, Message, MessageError, CARDS_PER_ROW, LIMIT,
 };
 
 #[derive(Debug, Clone)]

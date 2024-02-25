@@ -1,7 +1,5 @@
-use {
-    serde::{Deserialize, Serialize},
-    thiserror::Error,
-};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 fn default_as_false() -> bool {
     false

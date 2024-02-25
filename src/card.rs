@@ -1,15 +1,14 @@
-use {
-    crate::{
-        db::{GET_CARD, GET_CARD_FACE, WRITE_FACE_SMALL_BLOB, WRITE_SMALL_IMAGE_BLOB},
-        MagicalSearch, Message, MessageError,
-    },
-    iced::{
-        futures::future::join,
-        widget::{button, column, image::Handle, row, text, Image},
-        Command, Element,
-    },
-    rusqlite::named_params,
-    tokio_rusqlite::Connection,
+use iced::{
+    futures::future::join,
+    widget::{button, column, image::Handle, row, text, Image},
+    Command, Element,
+};
+use rusqlite::named_params;
+use tokio_rusqlite::Connection;
+
+use crate::{
+    db::{GET_CARD, GET_CARD_FACE, WRITE_FACE_SMALL_BLOB, WRITE_SMALL_IMAGE_BLOB},
+    MagicalSearch, Message, MessageError,
 };
 
 #[derive(Debug, Clone)]

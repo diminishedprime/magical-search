@@ -1,14 +1,13 @@
-use {
-    super::{
-        color::{parse_color, Color},
-        comparison_operator::{comparison_operator, ComparisonOperator},
-    },
-    nom::{
-        branch::alt,
-        bytes::complete::{tag, tag_no_case},
-        combinator::opt,
-        IResult,
-    },
+use nom::{
+    branch::alt,
+    bytes::complete::{tag, tag_no_case},
+    combinator::opt,
+    IResult,
+};
+
+use super::{
+    color::{parse_color, Color},
+    comparison_operator::{comparison_operator, ComparisonOperator},
 };
 
 // Colors and Color Identity

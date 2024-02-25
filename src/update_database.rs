@@ -1,23 +1,23 @@
 mod db;
 mod types;
 
-use {
-    crate::db::{
-        ADD_CARD, ADD_CARD_COLORS, ADD_CARD_COLOR_IDENTITY, ADD_CARD_IMAGE_URIS, ADD_CARD_KEYWORDS,
-    },
-    anyhow::{Context, Result},
-    db::{ADD_CARD_FACE, ADD_CARD_FACE_COLORS, ADD_CARD_FACE_IMAGE_URIS, CREATE_TABLE_SQL},
-    itertools::Itertools,
-    reqwest::Client,
-    rusqlite::{named_params, Transaction},
-    serde::de::DeserializeOwned,
-    serde_json::{self, Deserializer},
-    std::{
-        fs::File,
-        io::{self, BufReader, Read},
-        path::{Path, PathBuf},
-    },
-    types::{Card, CardFace},
+use std::{
+    fs::File,
+    io::{self, BufReader, Read},
+    path::{Path, PathBuf},
+};
+
+use anyhow::{Context, Result};
+use db::{ADD_CARD_FACE, ADD_CARD_FACE_COLORS, ADD_CARD_FACE_IMAGE_URIS, CREATE_TABLE_SQL};
+use itertools::Itertools;
+use reqwest::Client;
+use rusqlite::{named_params, Transaction};
+use serde::de::DeserializeOwned;
+use serde_json::{self, Deserializer};
+use types::{Card, CardFace};
+
+use crate::db::{
+    ADD_CARD, ADD_CARD_COLORS, ADD_CARD_COLOR_IDENTITY, ADD_CARD_IMAGE_URIS, ADD_CARD_KEYWORDS,
 };
 
 static CARD_CHUNK_SIZE: usize = 1000;

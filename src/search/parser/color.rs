@@ -1,8 +1,7 @@
-use {
-    nom::{branch::alt, multi::many1, IResult, Parser},
-    nom_supreme::tag::complete::tag_no_case,
-    std::fmt,
-};
+use std::fmt;
+
+use nom::{branch::alt, multi::many1, IResult, Parser};
+use nom_supreme::tag::complete::tag_no_case;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Color {
@@ -220,7 +219,10 @@ pub fn parse_color(input: &str) -> IResult<&str, Color> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, itertools::Itertools, nom::combinator::complete};
+    use itertools::Itertools;
+    use nom::combinator::complete;
+
+    use super::*;
 
     #[test]
     fn test_parse_color_abzan() {
