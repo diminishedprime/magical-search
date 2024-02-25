@@ -1,5 +1,5 @@
 use nom::{branch::alt, bytes::complete::tag, IResult, Parser};
-use nom_supreme::ParserExt;
+use nom_supreme::{error::ErrorTree, ParserExt};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ComparisonOperator {
@@ -10,7 +10,7 @@ pub enum ComparisonOperator {
     GreaterThanOrEqual,
 }
 
-pub fn comparison_operator(input: &str) -> IResult<&str, ComparisonOperator> {
+pub fn comparison_operator(input: &str) -> IResult<&str, ComparisonOperator, ErrorTree<&str>> {
     alt((
         tag("<=").value(ComparisonOperator::LessThanOrEqual),
         tag(">=").value(ComparisonOperator::GreaterThanOrEqual),
@@ -28,45 +28,33 @@ mod tests {
 
     #[test]
     fn test_parse_comparison_operator_less_than() {
-        assert_eq!(
-            comparison_operator("<"),
-            Ok(("", ComparisonOperator::LessThan))
-        );
+        let (_, actual) = comparison_operator("<").unwrap();
+        assert_eq!(actual, ComparisonOperator::LessThan);
     }
 
     #[test]
     fn test_parse_comparison_operator_less_than_or_equal() {
-        assert_eq!(
-            comparison_operator("<="),
-            Ok(("", ComparisonOperator::LessThanOrEqual))
-        );
-        assert_eq!(
-            comparison_operator(":"),
-            Ok(("", ComparisonOperator::LessThanOrEqual))
-        );
+        let (_, actual) = comparison_operator("<=").unwrap();
+        assert_eq!(actual, ComparisonOperator::LessThanOrEqual);
+        let (_, actual) = comparison_operator(":").unwrap();
+        assert_eq!(actual, ComparisonOperator::LessThanOrEqual);
     }
 
     #[test]
     fn test_parse_comparison_operator_equal() {
-        assert_eq!(
-            comparison_operator("="),
-            Ok(("", ComparisonOperator::Equal))
-        );
+        let (_, actual) = comparison_operator("=").unwrap();
+        assert_eq!(actual, ComparisonOperator::Equal);
     }
 
     #[test]
     fn test_parse_comparison_operator_greater_than() {
-        assert_eq!(
-            comparison_operator(">"),
-            Ok(("", ComparisonOperator::GreaterThan))
-        );
+        let (_, actual) = comparison_operator(">").unwrap();
+        assert_eq!(actual, ComparisonOperator::GreaterThan);
     }
 
     #[test]
     fn test_parse_comparison_operator_greater_than_or_equal() {
-        assert_eq!(
-            comparison_operator(">="),
-            Ok(("", ComparisonOperator::GreaterThanOrEqual))
-        );
+        let (_, actual) = comparison_operator(">=").unwrap();
+        assert_eq!(actual, ComparisonOperator::GreaterThanOrEqual);
     }
 }

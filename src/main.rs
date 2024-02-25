@@ -122,8 +122,8 @@ impl Application for MagicalSearch {
             }
             Message::SearchInputChanged(ref input) => {
                 match search::search(input) {
-                    Ok((_, query)) => println!("Parsed query: {:?}", query),
-                    Err(error) => println!("Error parsing query: {:?}", error),
+                    Ok(query) => println!("Parsed query: {:?}", query),
+                    Err(_) => println!("Error parsing query"),
                 }
                 match self {
                     MagicalSearch::Loaded { state } => {

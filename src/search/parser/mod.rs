@@ -3,7 +3,13 @@ mod color_query;
 mod comparison_operator;
 mod search_keyword;
 
-pub use search_keyword::search;
+use nom_supreme::{error::ErrorTree, final_parser::final_parser};
+
+use self::search_keyword::Search;
+
+pub fn search(input: &str) -> Result<Search, ErrorTree<&str>> {
+    final_parser(search_keyword::search)(input)
+}
 
 // and cards that are a certain color identity using the id: or identity:
 // keywords.

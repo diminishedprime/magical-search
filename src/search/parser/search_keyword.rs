@@ -1,4 +1,5 @@
 use nom::{branch::alt, bytes::complete::tag_no_case, multi::separated_list1, IResult, Parser};
+use nom_supreme::error::ErrorTree;
 
 use super::color_query::{color_query, ColorQuery};
 
@@ -14,17 +15,17 @@ pub enum Search {
     Or(Vec<Search>),
 }
 
-pub fn search_keyword(input: &str) -> IResult<&str, Search> {
+pub fn search_keyword(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
     alt((color_query.map(Search::color),)).parse(input)
 }
 
-fn and(input: &str) -> IResult<&str, Search> {
+fn and(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
     separated_list1(tag_no_case(" AND "), search_keyword)
         .map(Search::and)
         .parse(input)
 }
 
-fn or(input: &str) -> IResult<&str, Search> {
+fn or(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
     separated_list1(tag_no_case(" OR "), and)
         .map(Search::or)
         .parse(input)
@@ -56,9 +57,8 @@ impl Search {
     }
 }
 
-// TODO - use final parser here with nom_supreme
-pub fn search(input: &str) -> IResult<&str, Search> {
-    or(input)
+pub fn search(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
+    or.parse(input)
 }
 
 #[cfg(test)]
@@ -75,65 +75,59 @@ mod tests {
     #[test]
     fn test_parse_search_single_color_query() {
         let input = "color:red";
+        let (_, actual) = search(input).unwrap();
         assert_eq!(
-            search(input),
-            Ok((
-                "",
-                Search::leaf(SearchKeyword::Color(ColorQuery::new(
-                    ComparisonOperator::LessThanOrEqual,
-                    Color::Red
-                )))
-            ))
+            actual,
+            Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                ComparisonOperator::LessThanOrEqual,
+                Color::Red
+            )))
         );
     }
 
     #[test]
     fn test_parse_search_multiple_and() {
         let input = "color=red AND color=blue AND color=green";
+        let (_, actual) = search(input).unwrap();
         assert_eq!(
-            search(input),
-            Ok((
-                "",
-                Search::and(vec![
-                    Search::leaf(SearchKeyword::Color(ColorQuery::new(
-                        ComparisonOperator::Equal,
-                        Color::Red
-                    ))),
-                    Search::leaf(SearchKeyword::Color(ColorQuery::new(
-                        ComparisonOperator::Equal,
-                        Color::Blue
-                    ))),
-                    Search::leaf(SearchKeyword::Color(ColorQuery::new(
-                        ComparisonOperator::Equal,
-                        Color::Green
-                    )))
-                ])
-            ))
+            actual,
+            Search::and(vec![
+                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                    ComparisonOperator::Equal,
+                    Color::Red
+                ))),
+                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                    ComparisonOperator::Equal,
+                    Color::Blue
+                ))),
+                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                    ComparisonOperator::Equal,
+                    Color::Green
+                )))
+            ])
         );
     }
 
     #[test]
     fn test_parse_search_multiple_or() {
         let input = "color=red OR color=blue OR color=green";
+        let (_, actual) = search(input).unwrap();
         assert_eq!(
-            search(input),
-            Ok((
-                "",
-                Search::or(vec![
-                    Search::leaf(SearchKeyword::Color(ColorQuery::new(
-                        ComparisonOperator::Equal,
-                        Color::Red
-                    ))),
-                    Search::leaf(SearchKeyword::Color(ColorQuery::new(
-                        ComparisonOperator::Equal,
-                        Color::Blue
-                    ))),
-                    Search::leaf(SearchKeyword::Color(ColorQuery::new(
-                        ComparisonOperator::Equal,
-                        Color::Green
-                    )))
-                ])
-            ))
+            actual,
+            Search::or(vec![
+                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                    ComparisonOperator::Equal,
+                    Color::Red
+                ))),
+                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                    ComparisonOperator::Equal,
+                    Color::Blue
+                ))),
+                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                    ComparisonOperator::Equal,
+                    Color::Green
+                )))
+            ])
         );
     }
 }

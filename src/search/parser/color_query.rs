@@ -4,6 +4,7 @@ use nom::{
     combinator::opt,
     IResult,
 };
+use nom_supreme::error::ErrorTree;
 
 use super::{
     color::{parse_color, Color},
@@ -19,7 +20,7 @@ pub struct ColorQuery {
     pub is_negated: bool,
 }
 
-pub fn color_query(input: &str) -> IResult<&str, ColorQuery> {
+pub fn color_query(input: &str) -> IResult<&str, ColorQuery, ErrorTree<&str>> {
     let (input, negate) = opt(tag("-"))(input)?;
     let (input, _) = alt((tag_no_case("color"), tag_no_case("c")))(input)?;
     let (input, operator) = comparison_operator(input)?;
@@ -57,75 +58,64 @@ mod tests {
 
     #[test]
     fn test_color_query_lt_red() {
+        let (_, actual) = color_query("c<red").unwrap();
         assert_eq!(
-            color_query("c<red"),
-            Ok((
-                "",
-                ColorQuery::new(ComparisonOperator::LessThan, Color::Red)
-            ))
+            actual,
+            ColorQuery::new(ComparisonOperator::LessThan, Color::Red)
         );
     }
 
     #[test]
     fn test_color_query_lte_green() {
+        let (_, actual) = color_query("color<=green").unwrap();
         assert_eq!(
-            color_query("color<=green"),
-            Ok((
-                "",
-                ColorQuery::new(ComparisonOperator::LessThanOrEqual, Color::Green)
-            ))
+            actual,
+            ColorQuery::new(ComparisonOperator::LessThanOrEqual, Color::Green)
         );
     }
 
     #[test]
     fn test_color_query_lte_green_2() {
+        let (_, actual) = color_query("color:green").unwrap();
         assert_eq!(
-            color_query("color:green"),
-            Ok((
-                "",
-                ColorQuery::new(ComparisonOperator::LessThanOrEqual, Color::Green)
-            ))
+            actual,
+            ColorQuery::new(ComparisonOperator::LessThanOrEqual, Color::Green)
         );
     }
 
     #[test]
     fn test_color_query_is_blue() {
+        let (_, actual) = color_query("c=blue").unwrap();
         assert_eq!(
-            color_query("c=blue"),
-            Ok(("", ColorQuery::new(ComparisonOperator::Equal, Color::Blue)))
+            actual,
+            ColorQuery::new(ComparisonOperator::Equal, Color::Blue)
         );
     }
 
     #[test]
     fn test_color_query_gt_black() {
+        let (_, actual) = color_query("color>black").unwrap();
         assert_eq!(
-            color_query("color>black"),
-            Ok((
-                "",
-                ColorQuery::new(ComparisonOperator::GreaterThan, Color::Black)
-            ))
+            actual,
+            ColorQuery::new(ComparisonOperator::GreaterThan, Color::Black)
         );
     }
 
     #[test]
     fn test_color_query_gte_white() {
+        let (_, actual) = color_query("c>=white").unwrap();
         assert_eq!(
-            color_query("c>=white"),
-            Ok((
-                "",
-                ColorQuery::new(ComparisonOperator::GreaterThanOrEqual, Color::White)
-            ))
+            actual,
+            ColorQuery::new(ComparisonOperator::GreaterThanOrEqual, Color::White)
         );
     }
 
     #[test]
     fn test_color_query_not_gte_white() {
+        let (_, actual) = color_query("-c>=white").unwrap();
         assert_eq!(
-            color_query("-c>=white"),
-            Ok((
-                "",
-                ColorQuery::new(ComparisonOperator::GreaterThanOrEqual, Color::White).not()
-            ))
+            actual,
+            ColorQuery::new(ComparisonOperator::GreaterThanOrEqual, Color::White).not()
         );
     }
 }
