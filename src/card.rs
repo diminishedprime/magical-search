@@ -169,7 +169,7 @@ impl Card {
                 match loaded_card {
                     LoadedCard::Normal(loaded_card) => match &loaded_card.image {
                         Some(image) => {
-                            column!(Image::new(Handle::from_memory(image.clone())), view_detail)
+                            column!(Image::new(Handle::from_memory(image.clone())).content_fit(iced::ContentFit::None), view_detail)
                                 .into()
                         }
                         None => column!(

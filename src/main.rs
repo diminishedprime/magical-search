@@ -14,8 +14,10 @@ use thiserror::Error;
 
 use crate::card_detail::CardDetail;
 
-static INITIAL_SEARCH: &str = "Clawing Torment";
-pub static LIMIT: usize = 9;
+static INITIAL_SEARCH: &str = "";
+pub static CARDS_PER_ROW: usize = 6;
+pub static COLUMNS: usize = 3;
+pub static LIMIT: usize = CARDS_PER_ROW * COLUMNS;
 
 enum MagicalSearch {
     Loading,

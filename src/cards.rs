@@ -1,4 +1,4 @@
-use crate::{card::Card, db::GET_CARDS_NAME_LIKE, MagicalSearch, Message, MessageError, LIMIT};
+use crate::{card::Card, db::GET_CARDS_NAME_LIKE, MagicalSearch, Message, MessageError, CARDS_PER_ROW, LIMIT};
 use iced::{
     futures::{stream::FuturesOrdered, TryStreamExt},
     widget::{Column, Row},
@@ -17,8 +17,7 @@ impl Cards {
 
     pub fn view(&self) -> Element<Message> {
         let mut image_grid = Column::new();
-        let chunks = (LIMIT as f64).sqrt().ceil() as usize;
-        for row in &self.0.iter().chunks(chunks) {
+        for row in &self.0.iter().chunks(CARDS_PER_ROW) {
             let mut row_container = Row::new();
             for card in row {
                 row_container = row_container.push(card.view());
