@@ -4,7 +4,7 @@ mod cards;
 mod db;
 
 use async_std::path::PathBuf;
-use card::{Card, LoadingCard};
+use card::{Card, LoadedCard};
 use cards::Cards;
 use iced::{
     widget::{column, container, text, TextInput},
@@ -14,6 +14,7 @@ use thiserror::Error;
 
 use crate::card_detail::CardDetail;
 
+static INITIAL_SEARCH: &str = "Clawing Torment";
 pub static LIMIT: usize = 9;
 
 enum MagicalSearch {
@@ -45,6 +46,7 @@ enum MessageError {
 #[derive(Debug, Clone)]
 enum Message {
     CardClicked { card_id: String },
+    NextFace { card_id: String },
     SearchInputChanged(String),
     CardsLoaded(Result<Cards, MessageError>),
     CardLoaded(Result<Card, MessageError>),
@@ -66,7 +68,10 @@ impl Application for MagicalSearch {
     fn new(_flags: Self::Flags) -> (Self, iced::Command<Self::Message>) {
         (
             MagicalSearch::Loading,
-            Command::perform(Cards::fetch_cards(), Message::CardsLoaded),
+            Command::perform(
+                Cards::fetch_cards_with_search(INITIAL_SEARCH.to_string()),
+                Message::CardsLoaded,
+            ),
         )
     }
 
@@ -85,28 +90,22 @@ impl Application for MagicalSearch {
                     Ok(cards) => match self {
                         MagicalSearch::Loaded { state } => {
                             for card in &cards.0 {
-                                if let Card::LoadingImage(LoadingCard { id, name, .. }) = card {
-                                    commands.push(Command::perform(
-                                        Card::get_card(id.to_string(), name.to_string()),
-                                        Message::CardLoaded,
-                                    ));
+                                if card.is_loading() {
+                                    commands.push(card.load_action());
                                 }
                             }
                             state.current_cards = cards;
                         }
                         MagicalSearch::Loading => {
                             for card in &cards.0 {
-                                if let Card::LoadingImage(LoadingCard { id, name, .. }) = card {
-                                    commands.push(Command::perform(
-                                        Card::get_card(id.to_string(), name.to_string()),
-                                        Message::CardLoaded,
-                                    ));
+                                if card.is_loading() {
+                                    commands.push(card.load_action());
                                 }
                             }
                             *self = MagicalSearch::Loaded {
                                 state: AppState {
                                     current_cards: cards,
-                                    search: "".to_string(),
+                                    search: INITIAL_SEARCH.to_string(),
                                     selected_card_detail: None,
                                 },
                             };
@@ -178,6 +177,22 @@ impl Application for MagicalSearch {
                         _ => (),
                     },
                     _ => (),
+                }
+                Command::none()
+            }
+            Message::NextFace { card_id, .. } => {
+                if let MagicalSearch::Loaded { state } = self {
+                    if let Some(idx) = state.current_cards.0.iter().position(|c| c.id() == card_id)
+                    {
+                        if let Card::Loaded(LoadedCard::ArtSeries(ref mut art_series)) =
+                            state.current_cards.0[idx]
+                        {
+                            return Command::perform(
+                                Card::next_card_face(card_id.clone(), art_series.selected_face),
+                                Message::CardLoaded,
+                            );
+                        }
+                    }
                 }
                 Command::none()
             }

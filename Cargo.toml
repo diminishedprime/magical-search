@@ -8,7 +8,7 @@ path = "src/update-database/main.rs"
 
 [[bin]]
 name = "update-database"
-path = "src/update_database/main.rs"
+path = "src/update_database.rs"
 
 [dependencies]
 anyhow = "1.0.79"

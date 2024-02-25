@@ -1,9 +1,6 @@
-use crate::{
-    card::Card,
-    db::{GET_CARDS, GET_CARDS_NAME_LIKE},
-    MagicalSearch, Message, MessageError, LIMIT,
-};
+use crate::{card::Card, db::GET_CARDS_NAME_LIKE, MagicalSearch, Message, MessageError, LIMIT};
 use iced::{
+    futures::{stream::FuturesOrdered, TryStreamExt},
     widget::{Column, Row},
     Element,
 };
@@ -31,37 +28,6 @@ impl Cards {
         image_grid.into()
     }
 
-    pub async fn fetch_cards() -> Result<Cards, MessageError> {
-        let path = MagicalSearch::db_path();
-        let conn = Connection::open(path)
-            .await
-            .map_err(|_| MessageError::SQLConnection)?;
-
-        let cards = conn
-            .call(|conn| {
-                let mut stmt = conn.prepare(GET_CARDS)?;
-                let cards = stmt
-                    .query_map(&[(":limit", &LIMIT.to_string())], |row| {
-                        let id: String = row.get(0)?;
-                        let name: String = row.get(1)?;
-                        let cmc: Option<f64> = row.get(2)?;
-                        let url: Option<String> = row.get(3)?;
-                        let image: Option<Vec<u8>> = row.get(4)?;
-                        if image.is_none() {
-                            Ok(Card::loading(id, name, cmc, url))
-                        } else {
-                            Ok(Card::fully_loaded(id, name, cmc, image))
-                        }
-                    })?
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(cards)
-            })
-            .await
-            .map_err(|_| MessageError::SQLQuery)?;
-
-        Ok(Cards::new(cards))
-    }
-
     pub async fn fetch_cards_with_search(search: String) -> Result<Cards, MessageError> {
         let path = MagicalSearch::db_path();
         let conn = Connection::open(path)
@@ -73,23 +39,29 @@ impl Cards {
             .call(move |conn| {
                 let mut stmt = conn.prepare(GET_CARDS_NAME_LIKE)?;
                 let cards = stmt
-                    .query_map(&[(":like", &format!("%{}%", search)), (":limit", &LIMIT.to_string())], |row| {
-                        let id: String = row.get(0)?;
-                        let name: String = row.get(1)?;
-                        let cmc: Option<f64> = row.get(2)?;
-                        let url: Option<String> = row.get(3)?;
-                        let image: Option<Vec<u8>> = row.get(4)?;
-                        if image.is_none() {
-                            Ok(Card::loading(id, name, cmc, url))
-                        } else {
-                            Ok(Card::fully_loaded(id, name, cmc, image))
-                        }
-                    })?
+                    .query_map(
+                        &[
+                            (":like", &format!("%{}%", search)),
+                            (":limit", &LIMIT.to_string()),
+                        ],
+                        |row| {
+                            let id: String = row.get(0)?;
+                            Ok(id)
+                        },
+                    )?
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(cards)
             })
             .await
-            .map_err(|_| MessageError::SQLQuery)?;
+            .expect("Coludn't load initial cards");
+        // .map_err(|_| MessageError::SQLQuery)?;
+
+        let cards: Vec<Card> = cards
+            .into_iter()
+            .map(|id| Card::get_card(id))
+            .collect::<FuturesOrdered<_>>()
+            .try_collect()
+            .await?;
 
         Ok(Cards::new(cards))
     }
