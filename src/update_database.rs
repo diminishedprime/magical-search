@@ -1,21 +1,23 @@
 mod db;
 mod types;
 
-use anyhow::{Context, Result};
-use db::{ADD_CARD_FACE, ADD_CARD_FACE_COLORS, ADD_CARD_FACE_IMAGE_URIS, CREATE_TABLE_SQL};
-use itertools::Itertools;
-use reqwest::Client;
-use rusqlite::{named_params, Transaction};
-use serde::de::DeserializeOwned;
-use serde_json::{self, Deserializer};
-use std::fs::File;
-use std::io::BufReader;
-use std::io::{self, Read};
-use std::path::{Path, PathBuf};
-use types::{Card, CardFace};
-
-use crate::db::{
-    ADD_CARD, ADD_CARD_COLORS, ADD_CARD_COLOR_IDENTITY, ADD_CARD_IMAGE_URIS, ADD_CARD_KEYWORDS,
+use {
+    crate::db::{
+        ADD_CARD, ADD_CARD_COLORS, ADD_CARD_COLOR_IDENTITY, ADD_CARD_IMAGE_URIS, ADD_CARD_KEYWORDS,
+    },
+    anyhow::{Context, Result},
+    db::{ADD_CARD_FACE, ADD_CARD_FACE_COLORS, ADD_CARD_FACE_IMAGE_URIS, CREATE_TABLE_SQL},
+    itertools::Itertools,
+    reqwest::Client,
+    rusqlite::{named_params, Transaction},
+    serde::de::DeserializeOwned,
+    serde_json::{self, Deserializer},
+    std::{
+        fs::File,
+        io::{self, BufReader, Read},
+        path::{Path, PathBuf},
+    },
+    types::{Card, CardFace},
 };
 
 static CARD_CHUNK_SIZE: usize = 1000;

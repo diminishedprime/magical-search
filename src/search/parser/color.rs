@@ -1,11 +1,8 @@
-use nom::{
-    branch::alt,
-    bytes::complete::{tag, tag_no_case},
-    combinator::map,
-    multi::many1,
-    IResult,
+use {
+    nom::{branch::alt, multi::many1, IResult, Parser},
+    nom_supreme::tag::complete::tag_no_case,
+    std::fmt,
 };
-use std::fmt;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Color {
@@ -155,38 +152,39 @@ fn parse_color_combinations(input: &str) -> IResult<&str, Color> {
 
 fn parse_basic_color(input: &str) -> IResult<&str, Color> {
     alt((
-        map(tag_no_case("w"), |_| Color::White),
-        map(tag_no_case("u"), |_| Color::Blue),
-        map(tag_no_case("b"), |_| Color::Black),
-        map(tag_no_case("r"), |_| Color::Red),
-        map(tag_no_case("g"), |_| Color::Green),
-    ))(input)
+        tag_no_case("w").map(|_| Color::White),
+        tag_no_case("u").map(|_| Color::Blue),
+        tag_no_case("b").map(|_| Color::Black),
+        tag_no_case("r").map(|_| Color::Red),
+        tag_no_case("g").map(|_| Color::Green),
+    ))
+    .parse(input)
 }
 
 fn parse_color_1(input: &str) -> IResult<&str, Color> {
     alt((
-        map(tag("abzan"), |_| Color::Abzan),
-        map(tag("azorius"), |_| Color::Azorius),
-        map(tag("bant"), |_| Color::Bant),
-        map(tag("black"), |_| Color::Black),
-        map(tag("blue"), |_| Color::Blue),
-        map(tag("boros"), |_| Color::Boros),
-        map(tag("colorless"), |_| Color::Colorless),
-        map(tag("dimir"), |_| Color::Dimir),
-        map(tag("esper"), |_| Color::Esper),
+        tag_no_case("abzan").map(|_| Color::Abzan),
+        tag_no_case("azorius").map(|_| Color::Azorius),
+        tag_no_case("bant").map(|_| Color::Bant),
+        tag_no_case("black").map(|_| Color::Black),
+        tag_no_case("blue").map(|_| Color::Blue),
+        tag_no_case("boros").map(|_| Color::Boros),
+        tag_no_case("colorless").map(|_| Color::Colorless),
+        tag_no_case("dimir").map(|_| Color::Dimir),
+        tag_no_case("esper").map(|_| Color::Esper),
     ))(input)
 }
 fn parse_color_2(input: &str) -> IResult<&str, Color> {
     alt((
-        map(tag("golgari"), |_| Color::Golgari),
-        map(tag("green"), |_| Color::Green),
-        map(tag("grixis"), |_| Color::Grixis),
-        map(tag("gruul"), |_| Color::Gruul),
-        map(tag("izzet"), |_| Color::Izzet),
-        map(tag("jeskai"), |_| Color::Jeskai),
-        map(tag("jund"), |_| Color::Jund),
-        map(tag("mardu"), |_| Color::Mardu),
-        map(tag("multicolor"), |_| Color::Multicolor),
+        tag_no_case("golgari").map(|_| Color::Golgari),
+        tag_no_case("green").map(|_| Color::Green),
+        tag_no_case("grixis").map(|_| Color::Grixis),
+        tag_no_case("gruul").map(|_| Color::Gruul),
+        tag_no_case("izzet").map(|_| Color::Izzet),
+        tag_no_case("jeskai").map(|_| Color::Jeskai),
+        tag_no_case("jund").map(|_| Color::Jund),
+        tag_no_case("mardu").map(|_| Color::Mardu),
+        tag_no_case("multicolor").map(|_| Color::Multicolor),
     ))(input)
 }
 
@@ -205,27 +203,24 @@ pub fn parse_color(input: &str) -> IResult<&str, Color> {
     alt((
         parse_color_1,
         parse_color_2,
-        map(tag("naya"), |_| Color::Naya),
-        map(tag("orzhov"), |_| Color::Orzhov),
-        map(tag("red"), |_| Color::Red),
-        map(tag("rakdos"), |_| Color::Rakdos),
-        map(tag("selesnya"), |_| Color::Selesnya),
-        map(tag("simic"), |_| Color::Simic),
-        map(tag("sultai"), |_| Color::Sultai),
-        map(tag("temur"), |_| Color::Temur),
-        map(tag("white"), |_| Color::White),
-        map(tag("c"), |_| Color::Colorless),
-        map(tag("m"), |_| Color::Multicolor),
+        tag_no_case("naya").map(|_| Color::Naya),
+        tag_no_case("orzhov").map(|_| Color::Orzhov),
+        tag_no_case("red").map(|_| Color::Red),
+        tag_no_case("rakdos").map(|_| Color::Rakdos),
+        tag_no_case("selesnya").map(|_| Color::Selesnya),
+        tag_no_case("simic").map(|_| Color::Simic),
+        tag_no_case("sultai").map(|_| Color::Sultai),
+        tag_no_case("temur").map(|_| Color::Temur),
+        tag_no_case("white").map(|_| Color::White),
+        tag_no_case("c").map(|_| Color::Colorless),
+        tag_no_case("m").map(|_| Color::Multicolor),
         parse_color_combinations,
     ))(input)
 }
 
 #[cfg(test)]
 mod tests {
-    use itertools::Itertools;
-    use nom::combinator::complete;
-
-    use super::*;
+    use {super::*, itertools::Itertools, nom::combinator::complete};
 
     #[test]
     fn test_parse_color_abzan() {

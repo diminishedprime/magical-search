@@ -1,5 +1,7 @@
-use crate::{card::Card, Message, MessageError};
-use iced::{widget::Column, Element};
+use {
+    crate::{card::Card, Message, MessageError},
+    iced::{widget::Column, Element},
+};
 
 #[derive(Debug, Clone)]
 pub enum CardDetail {

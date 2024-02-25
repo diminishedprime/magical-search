@@ -1,8 +1,9 @@
-use nom::{
-    branch::alt, bytes::complete::tag_no_case, combinator::map, multi::separated_list1, IResult,
+use {
+    super::color_query::{color_query, ColorQuery},
+    nom::{
+        branch::alt, bytes::complete::tag_no_case, combinator::map, multi::separated_list1, IResult,
+    },
 };
-
-use super::color_query::{color_query, ColorQuery};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum SearchKeyword {
@@ -67,9 +68,10 @@ pub fn search(input: &str) -> IResult<&str, Search> {
 
 #[cfg(test)]
 mod tests {
-    use crate::search::parser::{color::Color, comparison_operator::ComparisonOperator};
-
-    use super::*;
+    use {
+        super::*,
+        crate::search::parser::{color::Color, comparison_operator::ComparisonOperator},
+    };
 
     impl Search {
         fn leaf(keyword: SearchKeyword) -> Self {

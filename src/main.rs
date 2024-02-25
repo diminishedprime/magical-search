@@ -4,15 +4,17 @@ mod cards;
 mod db;
 mod search;
 
-use crate::card_detail::CardDetail;
-use async_std::path::PathBuf;
-use card::{Card, LoadedCard};
-use cards::Cards;
-use iced::{
-    widget::{column, container, text, TextInput},
-    Application, Command, Length, Settings, Theme,
+use {
+    crate::card_detail::CardDetail,
+    async_std::path::PathBuf,
+    card::{Card, LoadedCard},
+    cards::Cards,
+    iced::{
+        widget::{column, container, text, TextInput},
+        Application, Command, Length, Settings, Theme,
+    },
+    thiserror::Error,
 };
-use thiserror::Error;
 
 static INITIAL_SEARCH: &str = "";
 pub static CARDS_PER_ROW: usize = 6;
