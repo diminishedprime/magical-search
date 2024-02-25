@@ -17,7 +17,7 @@ pub static ADD_CARD_KEYWORDS: &str = include_str!("add_card_keywords.sql");
 #[allow(dead_code)]
 pub static ADD_CARD_COLOR_IDENTITY: &str = include_str!("add_card_color_identity.sql");
 #[allow(dead_code)]
-pub static ADD_CARD_IMAGE_URIS: &str =include_str!("add_card_image_uris.sql");
+pub static ADD_CARD_IMAGE_URIS: &str = include_str!("add_card_image_uris.sql");
 #[allow(dead_code)]
 pub static ADD_CARD_FACE: &str = include_str!("add_card_face.sql");
 #[allow(dead_code)]

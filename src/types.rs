@@ -32,7 +32,7 @@ pub(crate) struct ImageUris {
     pub(crate) border_crop: Option<Url>,
 }
 
-// Colors is WUBRG
+// Colors is WUBRG, etc.
 type Colors = Vec<String>;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -210,7 +210,7 @@ pub(crate) struct Card {
     pub(crate) collector_number: String,
 
     // True if you should consider avoiding use of this print downstream.
-    #[serde(default="default_as_false")]
+    #[serde(default = "default_as_false")]
     pub(crate) content_warning: bool,
 
     // True if this card was only released in a video game.
@@ -275,7 +275,7 @@ pub(crate) struct Card {
 
     // An array of strings describing what categories of promo cards this card
     // falls into.
-    #[serde(default="Vec::new")]
+    #[serde(default = "Vec::new")]
     pub(crate) promo_types: Vec<String>,
 
     // // purchase_uris	Object
@@ -336,7 +336,6 @@ pub(crate) struct Card {
 
     // This card’s watermark, if any.
     pub(crate) watermark: Option<String>,
-
     // // preview.previewed_at	Date
     // // Nullable
     // // The date this card was previewed.

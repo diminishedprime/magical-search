@@ -106,7 +106,12 @@ fn add_card_faces(tx: &mut Transaction, card: &Card) -> Result<()> {
     Ok(())
 }
 
-fn add_card_face_image_uris(tx: &mut Transaction<'_>, card: &Card, card_face: &CardFace, idx: usize) -> Result<()> {
+fn add_card_face_image_uris(
+    tx: &mut Transaction<'_>,
+    card: &Card,
+    card_face: &CardFace,
+    idx: usize,
+) -> Result<()> {
     if let Some(image_uris) = &card_face.image_uris {
         tx.execute(
             ADD_CARD_FACE_IMAGE_URIS,

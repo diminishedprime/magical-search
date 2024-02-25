@@ -2,7 +2,9 @@ mod card;
 mod card_detail;
 mod cards;
 mod db;
+mod search;
 
+use crate::card_detail::CardDetail;
 use async_std::path::PathBuf;
 use card::{Card, LoadedCard};
 use cards::Cards;
@@ -11,8 +13,6 @@ use iced::{
     Application, Command, Length, Settings, Theme,
 };
 use thiserror::Error;
-
-use crate::card_detail::CardDetail;
 
 static INITIAL_SEARCH: &str = "";
 pub static CARDS_PER_ROW: usize = 6;
@@ -120,6 +120,10 @@ impl Application for MagicalSearch {
                 Command::batch(commands)
             }
             Message::SearchInputChanged(ref input) => {
+                match search::search(input) {
+                    Ok((_, query)) => println!("Parsed query: {:?}", query),
+                    Err(error) => println!("Error parsing query: {:?}", error),
+                }
                 match self {
                     MagicalSearch::Loaded { state } => {
                         state.search = input.to_string();

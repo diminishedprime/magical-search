@@ -168,10 +168,12 @@ impl Card {
                 });
                 match loaded_card {
                     LoadedCard::Normal(loaded_card) => match &loaded_card.image {
-                        Some(image) => {
-                            column!(Image::new(Handle::from_memory(image.clone())).content_fit(iced::ContentFit::None), view_detail)
-                                .into()
-                        }
+                        Some(image) => column!(
+                            Image::new(Handle::from_memory(image.clone()))
+                                .content_fit(iced::ContentFit::None),
+                            view_detail
+                        )
+                        .into(),
                         None => column!(
                             text(loaded_card.name.clone()),
                             text(loaded_card.cmc.unwrap_or(0.0)),
@@ -179,9 +181,7 @@ impl Card {
                         )
                         .into(),
                     },
-                    LoadedCard::ArtSeries(ArtSeries {
-                        face, ..
-                    }) => {
+                    LoadedCard::ArtSeries(ArtSeries { face, .. }) => {
                         let controls = row!(
                             view_detail,
                             button("Flip Card").on_press(Message::NextFace {

@@ -1,9 +1,9 @@
-use iced::{widget::Column, Element};
 use crate::{card::Card, Message, MessageError};
+use iced::{widget::Column, Element};
 
 #[derive(Debug, Clone)]
 pub enum CardDetail {
-    Loaded{ card: Card },
+    Loaded { card: Card },
 }
 
 impl CardDetail {
@@ -15,11 +15,7 @@ impl CardDetail {
     }
     pub fn view(&self) -> Element<Message> {
         match self {
-            CardDetail::Loaded{ card } => {
-                Column::new()
-                    .push(card.view())
-                    .into()
-            }
+            CardDetail::Loaded { card } => Column::new().push(card.view()).into(),
         }
     }
 }
