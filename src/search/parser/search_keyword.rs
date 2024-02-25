@@ -1,47 +1,10 @@
-use nom::{
-    branch::alt, bytes::complete::tag_no_case, combinator::map, multi::separated_list1, IResult,
-};
+use nom::{branch::alt, bytes::complete::tag_no_case, multi::separated_list1, IResult, Parser};
 
 use super::color_query::{color_query, ColorQuery};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum SearchKeyword {
     Color(ColorQuery),
-}
-
-pub fn search_keyword(input: &str) -> IResult<&str, Search> {
-    alt((map(color_query, |color| {
-        Search::Keyword(SearchKeyword::Color(color))
-    }),))(input)
-}
-
-fn or(input: &str) -> IResult<&str, Search> {
-    map(separated_list1(tag_no_case(" OR "), and), |list| {
-        if list.len() == 1 {
-            list.into_iter()
-                .nth(0)
-                .expect("Invalid invariant: Just checked length equals 1")
-        } else {
-            Search::or(list)
-        }
-    })(input)
-}
-
-fn and(input: &str) -> IResult<&str, Search> {
-    map(separated_list1(tag_no_case(" AND "), term), |list| {
-        if list.len() == 1 {
-            list.into_iter()
-                .nth(0)
-                .expect("Invalid invariant: Just checked length equals 1")
-        } else {
-            Search::and(list)
-        }
-    })(input)
-}
-
-fn term(input: &str) -> IResult<&str, Search> {
-    let (rest, s) = search_keyword(input)?;
-    Ok((rest, s))
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -51,12 +14,45 @@ pub enum Search {
     Or(Vec<Search>),
 }
 
+pub fn search_keyword(input: &str) -> IResult<&str, Search> {
+    alt((color_query.map(Search::color),)).parse(input)
+}
+
+fn and(input: &str) -> IResult<&str, Search> {
+    separated_list1(tag_no_case(" AND "), search_keyword)
+        .map(Search::and)
+        .parse(input)
+}
+
+fn or(input: &str) -> IResult<&str, Search> {
+    separated_list1(tag_no_case(" OR "), and)
+        .map(Search::or)
+        .parse(input)
+}
+
 impl Search {
     fn and(searches: Vec<Search>) -> Self {
-        Self::And(searches)
+        if searches.len() == 1 {
+            searches
+                .into_iter()
+                .nth(0)
+                .expect("Invalid invariant: Just checked length equals 1")
+        } else {
+            Self::And(searches)
+        }
     }
     fn or(searches: Vec<Search>) -> Self {
-        Self::Or(searches)
+        if searches.len() == 1 {
+            searches
+                .into_iter()
+                .nth(0)
+                .expect("Invalid invariant: Just checked length equals 1")
+        } else {
+            Self::Or(searches)
+        }
+    }
+    fn color(color: ColorQuery) -> Self {
+        Self::Keyword(SearchKeyword::Color(color))
     }
 }
 

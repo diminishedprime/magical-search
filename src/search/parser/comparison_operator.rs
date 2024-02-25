@@ -1,6 +1,7 @@
-use nom::{branch::alt, bytes::complete::tag, combinator::map, IResult};
+use nom::{branch::alt, bytes::complete::tag, IResult, Parser};
+use nom_supreme::ParserExt;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ComparisonOperator {
     LessThan,
     LessThanOrEqual,
@@ -11,13 +12,14 @@ pub enum ComparisonOperator {
 
 pub fn comparison_operator(input: &str) -> IResult<&str, ComparisonOperator> {
     alt((
-        map(tag("<="), |_| ComparisonOperator::LessThanOrEqual),
-        map(tag(">="), |_| ComparisonOperator::GreaterThanOrEqual),
-        map(tag("<"), |_| ComparisonOperator::LessThan),
-        map(tag(":"), |_| ComparisonOperator::LessThanOrEqual),
-        map(tag("="), |_| ComparisonOperator::Equal),
-        map(tag(">"), |_| ComparisonOperator::GreaterThan),
-    ))(input)
+        tag("<=").value(ComparisonOperator::LessThanOrEqual),
+        tag(">=").value(ComparisonOperator::GreaterThanOrEqual),
+        tag("<").value(ComparisonOperator::LessThan),
+        tag(":").value(ComparisonOperator::LessThanOrEqual),
+        tag("=").value(ComparisonOperator::Equal),
+        tag(">").value(ComparisonOperator::GreaterThan),
+    ))
+    .parse(input)
 }
 
 #[cfg(test)]
