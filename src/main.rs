@@ -1,10 +1,12 @@
 mod card;
 mod card_detail;
-mod cards;
+pub(crate) mod cards;
+mod database;
 mod db;
 mod search;
+mod to_sql;
+mod types;
 
-use async_std::path::PathBuf;
 use card::{Card, LoadedCard};
 use cards::Cards;
 use iced::{
@@ -40,9 +42,11 @@ enum AppError {
     SQLQuery(#[from] rusqlite::Error),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
 enum MessageError {
+    #[error("Failed to connect to local database")]
     SQLConnection,
+    #[error("Fail to query successfully")]
     SQLQuery,
 }
 
@@ -54,12 +58,6 @@ enum Message {
     CardsLoaded(Result<Cards, MessageError>),
     CardLoaded(Result<Card, MessageError>),
     CardDetailLoaded(Result<CardDetail, MessageError>),
-}
-
-impl MagicalSearch {
-    fn db_path() -> PathBuf {
-        PathBuf::from("target").join("cards.sqlite")
-    }
 }
 
 impl Application for MagicalSearch {
@@ -121,6 +119,7 @@ impl Application for MagicalSearch {
                 Command::batch(commands)
             }
             Message::SearchInputChanged(ref input) => {
+                let search = search::search(input);
                 match search::search(input) {
                     Ok(query) => println!("Parsed query: {:?}", query),
                     Err(_) => println!("Error parsing query"),
@@ -131,10 +130,14 @@ impl Application for MagicalSearch {
                     }
                     _ => (),
                 };
-                Command::perform(
-                    Cards::fetch_cards_with_search(input.to_string()),
-                    Message::CardsLoaded,
-                )
+                if let Ok(search) = search {
+                    Command::perform(Cards::fetch_cards_with_query(search), Message::CardsLoaded)
+                } else {
+                    Command::perform(
+                        Cards::fetch_cards_with_search(input.to_string()),
+                        Message::CardsLoaded,
+                    )
+                }
             }
             Message::CardLoaded(card) => {
                 match card {

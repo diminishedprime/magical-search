@@ -18,7 +18,13 @@ INSERT OR REPLACE INTO cards (
     power,
     toughness,
     flavor_text,
-    oracle_text
+    oracle_text,
+    C,
+    W,
+    U,
+    B,
+    R,
+    G
 ) VALUES (
     :id,
     :name,
@@ -39,5 +45,11 @@ INSERT OR REPLACE INTO cards (
     :power,
     :toughness,
     :flavor_text,
-    :oracle_text
+    :oracle_text,
+    :C,
+    :W,
+    :U,
+    :B,
+    :R,
+    :G
 )

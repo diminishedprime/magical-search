@@ -19,7 +19,13 @@ INSERT OR REPLACE INTO card_faces (
     printed_type_line,
     toughness,
     type_line,
-    watermark
+    watermark,
+    C,
+    W,
+    U,
+    B,
+    R,
+    G
 )
 VALUES (
     :face_index,
@@ -42,5 +48,11 @@ VALUES (
     :printed_type_line,
     :toughness,
     :type_line,
-    :watermark
+    :watermark,
+    :C,
+    :W,
+    :U,
+    :B,
+    :R,
+    :G
 )

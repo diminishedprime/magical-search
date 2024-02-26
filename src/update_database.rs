@@ -8,7 +8,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use db::{ADD_CARD_FACE, ADD_CARD_FACE_COLORS, ADD_CARD_FACE_IMAGE_URIS, CREATE_TABLE_SQL};
+use db::{ADD_CARD_FACE, ADD_CARD_FACE_IMAGE_URIS, CREATE_TABLE_SQL};
 use itertools::Itertools;
 use reqwest::Client;
 use rusqlite::{named_params, Transaction};
@@ -16,16 +16,13 @@ use serde::de::DeserializeOwned;
 use serde_json::{self, Deserializer};
 use types::{Card, CardFace};
 
-use crate::db::{
-    ADD_CARD, ADD_CARD_COLORS, ADD_CARD_COLOR_IDENTITY, ADD_CARD_IMAGE_URIS, ADD_CARD_KEYWORDS,
-};
+use crate::db::{ADD_CARD, ADD_CARD_COLOR_IDENTITY, ADD_CARD_IMAGE_URIS, ADD_CARD_KEYWORDS};
 
 static CARD_CHUNK_SIZE: usize = 1000;
 
 fn add_card(tx: &mut Transaction, card: &Card) -> Result<()> {
     add_base_card(tx, &card)?;
     add_card_faces(tx, &card)?;
-    add_colors(tx, &card)?;
     add_keywords(tx, &card)?;
     add_color_identity(tx, &card)?;
     add_image_uris(tx, &card)?;
@@ -56,6 +53,12 @@ fn add_base_card(tx: &mut Transaction, card: &Card) -> Result<()> {
         ":toughness": card.toughness,
         ":flavor_text": card.flavor_text,
         ":oracle_text": card.oracle_text,
+        ":C": card.is_colorless(),
+        ":W": card.is_white(),
+        ":U": card.is_blue(),
+        ":B": card.is_black(),
+        ":R": card.is_red(),
+        ":G": card.is_green(),
         },
     )?;
     Ok(())
@@ -91,6 +94,12 @@ fn add_base_card_face(
             ":toughness": &card_face.toughness,
             ":type_line": &card_face.type_line,
             ":watermark": &card_face.watermark,
+            ":C": card_face.is_colorless(),
+            ":W": card_face.is_white(),
+            ":U": card_face.is_blue(),
+            ":B": card_face.is_black(),
+            ":R": card_face.is_red(),
+            ":G": card_face.is_green(),
         },
     )?;
     Ok(())
@@ -100,8 +109,6 @@ fn add_card_faces(tx: &mut Transaction, card: &Card) -> Result<()> {
     if let Some(card_faces) = &card.card_faces {
         for (idx, card_face) in card_faces.iter().enumerate() {
             add_base_card_face(tx, card, card_face, idx)?;
-            add_card_face_colors(tx, card, card_face, idx)?;
-            // add_card_face_color_identity(tx, card)?;
             add_card_face_image_uris(tx, card, card_face, idx)?;
         }
     }
@@ -128,42 +135,6 @@ fn add_card_face_image_uris(
                 ":border_crop": image_uris.border_crop,
             },
         )?;
-    }
-    Ok(())
-}
-
-fn add_card_face_colors(
-    tx: &mut Transaction<'_>,
-    card: &Card,
-    card_face: &CardFace,
-    idx: usize,
-) -> Result<()> {
-    if let Some(colors) = &card_face.colors {
-        for color in colors {
-            tx.execute(
-                ADD_CARD_FACE_COLORS,
-                named_params! {
-                    ":face_index": idx,
-                    ":card_id": card.id,
-                    ":color": color,
-                },
-            )?;
-        }
-    }
-    Ok(())
-}
-
-fn add_colors(tx: &mut Transaction, card: &Card) -> Result<()> {
-    if let Some(colors) = &card.colors {
-        for color in colors {
-            tx.execute(
-                ADD_CARD_COLORS,
-                named_params! {
-                    ":card_id": &card.id,
-                    ":color": color,
-                },
-            )?;
-        }
     }
     Ok(())
 }

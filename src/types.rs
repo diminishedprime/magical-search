@@ -350,6 +350,43 @@ pub(crate) struct Card {
     // END PRINT FIELDS
 }
 
+impl Card {
+    #[allow(dead_code)]
+    pub fn is_colorless(&self) -> Option<bool> {
+        self.colors.as_ref().map(|colors| colors.is_empty())
+    }
+    #[allow(dead_code)]
+    pub fn is_white(&self) -> Option<bool> {
+        self.colors
+            .as_ref()
+            .map(|colors| colors.contains(&"W".to_string()))
+    }
+    #[allow(dead_code)]
+    pub fn is_blue(&self) -> Option<bool> {
+        self.colors
+            .as_ref()
+            .map(|colors| colors.contains(&"U".to_string()))
+    }
+    #[allow(dead_code)]
+    pub fn is_black(&self) -> Option<bool> {
+        self.colors
+            .as_ref()
+            .map(|colors| colors.contains(&"B".to_string()))
+    }
+    #[allow(dead_code)]
+    pub fn is_red(&self) -> Option<bool> {
+        self.colors
+            .as_ref()
+            .map(|colors| colors.contains(&"R".to_string()))
+    }
+    #[allow(dead_code)]
+    pub fn is_green(&self) -> Option<bool> {
+        self.colors
+            .as_ref()
+            .map(|colors| colors.contains(&"G".to_string()))
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct CardFace {
     // The name of the illustrator of this card face. Newly spoiled cards may
@@ -408,4 +445,41 @@ pub(crate) struct CardFace {
     pub(crate) type_line: Option<String>,
     // The watermark on this particulary card face, if any.
     pub(crate) watermark: Option<String>,
+}
+
+impl CardFace {
+    #[allow(dead_code)]
+    pub fn is_colorless(&self) -> Option<bool> {
+        self.colors.as_ref().map(|colors| colors.is_empty())
+    }
+    #[allow(dead_code)]
+    pub fn is_white(&self) -> Option<bool> {
+        self.colors
+            .as_ref()
+            .map(|colors| colors.contains(&"W".to_string()))
+    }
+    #[allow(dead_code)]
+    pub fn is_blue(&self) -> Option<bool> {
+        self.colors
+            .as_ref()
+            .map(|colors| colors.contains(&"U".to_string()))
+    }
+    #[allow(dead_code)]
+    pub fn is_black(&self) -> Option<bool> {
+        self.colors
+            .as_ref()
+            .map(|colors| colors.contains(&"B".to_string()))
+    }
+    #[allow(dead_code)]
+    pub fn is_red(&self) -> Option<bool> {
+        self.colors
+            .as_ref()
+            .map(|colors| colors.contains(&"R".to_string()))
+    }
+    #[allow(dead_code)]
+    pub fn is_green(&self) -> Option<bool> {
+        self.colors
+            .as_ref()
+            .map(|colors| colors.contains(&"G".to_string()))
+    }
 }

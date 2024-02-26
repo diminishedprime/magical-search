@@ -18,7 +18,13 @@ CREATE TABLE IF NOT EXISTS cards (
     power TEXT,
     toughness TEXT,
     flavor_text TEXT,
-    oracle_text TEXT
+    oracle_text TEXT,
+    C BOOLEAN DEFAULT 0,
+    W BOOLEAN DEFAULT 0,
+    U BOOLEAN DEFAULT 0,
+    B BOOLEAN DEFAULT 0,
+    R BOOLEAN DEFAULT 0,
+    G BOOLEAN DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS card_faces (
@@ -43,13 +49,13 @@ CREATE TABLE IF NOT EXISTS card_faces (
     toughness TEXT,
     type_line TEXT,
     watermark TEXT,
+    C BOOLEAN DEFAULT 0,
+    W BOOLEAN DEFAULT 0,
+    U BOOLEAN DEFAULT 0,
+    B BOOLEAN DEFAULT 0,
+    R BOOLEAN DEFAULT 0,
+    G BOOLEAN DEFAULT 0,
     PRIMARY KEY (card_id, face_index),
-    FOREIGN KEY (card_id) REFERENCES cards(id)
-);
-
-CREATE TABLE IF NOT EXISTS card_colors (
-    card_id TEXT,
-    color TEXT,
     FOREIGN KEY (card_id) REFERENCES cards(id)
 );
 
@@ -86,13 +92,6 @@ CREATE TABLE IF NOT EXISTS card_keywords (
     card_id TEXT,
     keyword TEXT,
     FOREIGN KEY (card_id) REFERENCES cards(id)
-);
-
-CREATE TABLE IF NOT EXISTS card_faces_colors (
-    card_id TEXT,
-    face_index INTEGER,
-    color TEXT,
-    FOREIGN KEY (card_id, face_index) REFERENCES card_faces(card_id, face_index)
 );
 
 CREATE TABLE IF NOT EXISTS card_faces_image_uris (

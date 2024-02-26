@@ -4,17 +4,17 @@ use iced::{
     Element,
 };
 use itertools::Itertools;
-use tokio_rusqlite::Connection;
 
 use crate::{
-    card::Card, db::GET_CARDS_NAME_LIKE, MagicalSearch, Message, MessageError, CARDS_PER_ROW, LIMIT,
+    card::Card, database::Database, db::GET_CARDS_NAME_LIKE, search::Search, Message, MessageError,
+    CARDS_PER_ROW, LIMIT,
 };
 
 #[derive(Debug, Clone)]
 pub struct Cards(pub Vec<Card>);
 
 impl Cards {
-    fn new(cards: Vec<Card>) -> Self {
+    pub fn new(cards: Vec<Card>) -> Self {
         Self(cards)
     }
 
@@ -30,9 +30,15 @@ impl Cards {
         image_grid.into()
     }
 
+    pub async fn fetch_cards_with_query(search: Search) -> Result<Cards, MessageError> {
+        let cards = Database::fetch_cards_with_search(search)
+            .await
+            .map_err(|_| MessageError::SQLQuery)?;
+        Ok(cards)
+    }
+
     pub async fn fetch_cards_with_search(search: String) -> Result<Cards, MessageError> {
-        let path = MagicalSearch::db_path();
-        let conn = Connection::open(path)
+        let conn = Database::connection()
             .await
             .map_err(|_| MessageError::SQLConnection)?;
 

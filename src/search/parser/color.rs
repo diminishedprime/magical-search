@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{collections::HashSet, fmt};
 
 use nom::{branch::alt, multi::many1, IResult, Parser};
 use nom_supreme::{error::ErrorTree, tag::complete::tag_no_case};
@@ -51,6 +51,12 @@ impl PartialOrd for Color {
 }
 
 impl Color {
+    pub fn as_set(&self) -> HashSet<String> {
+        HashSet::from_iter(self.as_vec())
+    }
+    pub fn as_vec(&self) -> Vec<String> {
+        self.to_string().chars().map(|c| c.to_string()).collect()
+    }
     fn order(&self) -> usize {
         match self {
             Color::White => 0,

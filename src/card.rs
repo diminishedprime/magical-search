@@ -7,8 +7,9 @@ use rusqlite::named_params;
 use tokio_rusqlite::Connection;
 
 use crate::{
+    database::Database,
     db::{GET_CARD, GET_CARD_FACE, WRITE_FACE_SMALL_BLOB, WRITE_SMALL_IMAGE_BLOB},
-    MagicalSearch, Message, MessageError,
+    Message, MessageError,
 };
 
 #[derive(Debug, Clone)]
@@ -113,8 +114,7 @@ impl Card {
         ),
         MessageError,
     > {
-        let path = MagicalSearch::db_path();
-        let conn = Connection::open(path)
+        let conn = Database::connection()
             .await
             .map_err(|_| MessageError::SQLConnection)?;
 
@@ -222,11 +222,7 @@ impl Card {
 
     async fn ensure_image(&mut self) -> Result<(), MessageError> {
         if let Card::Loading { id, url } = self {
-            let (conn, image) = join(
-                Connection::open(MagicalSearch::db_path()),
-                download_image(url.clone()),
-            )
-            .await;
+            let (conn, image) = join(Database::connection(), download_image(url.clone())).await;
             let conn = conn.map_err(|_| MessageError::SQLConnection)?;
             let image = image?;
             Self::write_small_blob(&conn, id.clone(), image.clone()).await?;
@@ -241,7 +237,7 @@ impl Card {
         face_index: String,
         uri: String,
     ) -> Result<Option<Vec<u8>>, MessageError> {
-        let conn = Connection::open(MagicalSearch::db_path())
+        let conn = Database::connection()
             .await
             .map_err(|_| MessageError::SQLConnection)?;
         let image = download_image(uri).await?;
@@ -265,7 +261,7 @@ impl Card {
         card_id: String,
         face_index: usize,
     ) -> Result<Option<Vec<u8>>, MessageError> {
-        let conn = Connection::open(MagicalSearch::db_path())
+        let conn = Database::connection()
             .await
             .map_err(|_| MessageError::SQLConnection)?;
 
