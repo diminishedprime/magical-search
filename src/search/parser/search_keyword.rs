@@ -6,13 +6,16 @@ use nom_supreme::error::ErrorTree;
 
 use super::{
     color_query::{color_query, ColorQuery},
+    name,
     power_query::{power_query, PowerQuery},
+    Name,
 };
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum SearchKeyword {
     Color(ColorQuery),
     Power(PowerQuery),
+    Name(Name),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -26,6 +29,7 @@ pub fn search_keyword(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
     alt((
         color_query.map(Search::color),
         power_query.map(Search::power),
+        name.map(Search::name),
     ))
     .parse(input)
 }
@@ -40,6 +44,10 @@ fn or(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
     separated_list1(tag_no_case(" OR "), and)
         .map(Search::or)
         .parse(input)
+}
+
+pub fn search(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
+    or.parse(input)
 }
 
 impl Search {
@@ -69,10 +77,9 @@ impl Search {
     fn power(power: PowerQuery) -> Self {
         Self::Keyword(SearchKeyword::Power(power))
     }
-}
-
-pub fn search(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
-    or.parse(input)
+    fn name(name: Name) -> Self {
+        Self::Keyword(SearchKeyword::Name(name))
+    }
 }
 
 #[cfg(test)]

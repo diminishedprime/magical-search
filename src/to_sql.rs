@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::search::{
-    ColorQuery, Comparison, ComparisonOperator, PowerQuery, Search, SearchKeyword,
+    ColorQuery, Comparison, ComparisonOperator, Name, PowerQuery, Search, SearchKeyword,
 };
 
 pub trait ToSql {
@@ -129,11 +129,19 @@ impl ToSql for ColorQuery {
     }
 }
 
+impl ToSql for Name {
+    fn to_sql(&self) -> String {
+        let like = format!("cards.name LIKE '%{name}%'", name = self.text);
+        format!("({like})", like = like)
+    }
+}
+
 impl ToSql for SearchKeyword {
     fn to_sql(&self) -> String {
         match self {
             SearchKeyword::Color(color) => color.to_sql(),
             SearchKeyword::Power(power) => power.to_sql(),
+            SearchKeyword::Name(name) => name.to_sql(),
         }
     }
 }
