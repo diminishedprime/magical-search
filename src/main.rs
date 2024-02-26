@@ -7,7 +7,7 @@ mod search;
 mod to_sql;
 mod types;
 
-use card::{Card, LoadedCard};
+use card::Card;
 use cards::Cards;
 use iced::{
     widget::{
@@ -204,9 +204,7 @@ impl Application for MagicalSearch {
                 if let MagicalSearch::Loaded { state } = self {
                     if let Some(idx) = state.current_cards.0.iter().position(|c| c.id() == card_id)
                     {
-                        if let Card::Loaded(LoadedCard::ArtSeries(ref mut art_series)) =
-                            state.current_cards.0[idx]
-                        {
+                        if let Card::ArtSeries(ref mut art_series) = state.current_cards.0[idx] {
                             return Command::perform(
                                 Card::next_card_face(card_id.clone(), art_series.selected_face),
                                 Message::CardLoaded,

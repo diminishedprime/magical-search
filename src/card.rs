@@ -1,6 +1,6 @@
 use iced::{
     futures::future::join,
-    widget::{button, column, image::Handle, row, text, Image},
+    widget::{button, column, container, image::Handle, row, text, Image},
     Command, Element,
 };
 use rusqlite::named_params;
@@ -20,6 +20,17 @@ pub struct NormalCard {
     pub image: Option<Vec<u8>>,
 }
 
+impl NormalCard {
+    fn view(&self) -> Element<Message> {
+        match &self.image {
+            Some(image) => column!(Image::new(Handle::from_memory(image.clone()))
+                .content_fit(iced::ContentFit::Contain),),
+            None => column!(text(self.name.clone()), text(self.cmc.unwrap_or(0.0)),),
+        }
+        .into()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ArtSeries {
     pub id: String,
@@ -29,24 +40,34 @@ pub struct ArtSeries {
     pub num_faces: usize,
 }
 
-#[derive(Debug, Clone)]
-pub enum LoadedCard {
-    Normal(NormalCard),
-    ArtSeries(ArtSeries),
+impl ArtSeries {
+    fn view(&self) -> Element<Message> {
+        match &self.face {
+            Some(image) => {
+                column!(Image::new(Handle::from_memory(image.clone())))
+            }
+            None => column!(text("No image for this face.")),
+        }
+        .into()
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct LoadingCard {
     pub id: String,
-    pub name: String,
-    pub cmc: Option<f64>,
-    pub image_url: Option<String>,
+    pub url: String,
+}
+impl LoadingCard {
+    fn view(&self) -> Element<Message> {
+        column!(text("Loading card"),).into()
+    }
 }
 
 #[derive(Debug, Clone)]
 pub enum Card {
-    Loaded(LoadedCard),
-    Loading { id: String, url: String },
+    Normal(NormalCard),
+    ArtSeries(ArtSeries),
+    Loading(LoadingCard),
 }
 
 impl Card {
@@ -55,7 +76,7 @@ impl Card {
     }
 
     pub fn load_action(&self) -> Command<Message> {
-        if let Card::Loading { id, .. } = self {
+        if let Card::Loading(LoadingCard { id, .. }) = self {
             Command::perform(Card::get_card(id.to_string()), Message::CardLoaded)
         } else {
             Command::none()
@@ -63,12 +84,12 @@ impl Card {
     }
 
     pub fn normal_card(id: String, name: String, cmc: Option<f64>, image: Option<Vec<u8>>) -> Self {
-        Self::Loaded(LoadedCard::Normal(NormalCard {
+        Self::Normal(NormalCard {
             id,
             name,
             cmc,
             image,
-        }))
+        })
     }
 
     pub fn art_series(
@@ -78,26 +99,24 @@ impl Card {
         selected_face: usize,
         num_faces: usize,
     ) -> Self {
-        Self::Loaded(LoadedCard::ArtSeries(ArtSeries {
+        Self::ArtSeries(ArtSeries {
             id,
             name,
             face,
             selected_face,
             num_faces,
-        }))
+        })
     }
 
     pub fn loading(id: String, url: String) -> Self {
-        Self::Loading { id, url }
+        Self::Loading(LoadingCard { id, url })
     }
 
     pub fn id(&self) -> String {
         match self {
-            Card::Loaded(loaded_card) => match loaded_card {
-                LoadedCard::Normal(normal) => normal.id.clone(),
-                LoadedCard::ArtSeries(art_series) => art_series.id.clone(),
-            },
-            Card::Loading { id, .. } => id.clone(),
+            Card::Normal(normal) => normal.id.clone(),
+            Card::ArtSeries(art_series) => art_series.id.clone(),
+            Card::Loading(LoadingCard { id, .. }) => id.clone(),
         }
     }
 
@@ -161,48 +180,37 @@ impl Card {
         Ok(Card::art_series(id, name, face, next_face, num_faces))
     }
 
+    pub fn view_detail(&self) -> Element<Message> {
+        button("Load Card")
+            .on_press(Message::CardClicked {
+                card_id: self.id().clone(),
+            })
+            .into()
+    }
+
     pub fn view(&self) -> Element<Message> {
         let height = 210;
         let width = 150;
-        let image_part = match self {
-            Card::Loaded(loaded_card) => match loaded_card {
-                LoadedCard::Normal(loaded_card) => match &loaded_card.image {
-                    Some(image) => column!(Image::new(Handle::from_memory(image.clone()))
-                        .content_fit(iced::ContentFit::Contain),),
-                    None => column!(
-                        text(loaded_card.name.clone()),
-                        text(loaded_card.cmc.unwrap_or(0.0)),
-                    ),
-                },
-                LoadedCard::ArtSeries(ArtSeries { face, .. }) => match face {
-                    Some(image) => {
-                        column!(Image::new(Handle::from_memory(image.clone())))
-                    }
-                    None => column!(text("No image for this face.")),
-                },
-            },
-            Card::Loading { .. } => column!(text("Loading card"),),
-        }
+        let card = container(match self {
+            Card::Normal(normal) => normal.view(),
+            Card::ArtSeries(art_series) => art_series.view(),
+            Card::Loading(loading_card) => loading_card.view(),
+        })
         .height(height)
         .width(width);
 
         let content = match self {
-            Card::Loaded(loaded_card) => {
-                let view_detail = button("Load Card").on_press(Message::CardClicked {
-                    card_id: self.id().clone(),
-                });
-                match loaded_card {
-                    LoadedCard::Normal(_loaded_card) => column!(image_part, view_detail),
-                    LoadedCard::ArtSeries(ArtSeries { .. }) => {
-                        let controls = row!(
-                            view_detail,
-                            button("Flip Card").on_press(Message::NextFace {
-                                card_id: self.id().clone()
-                            })
-                        );
-                        column!(image_part, controls)
-                    }
-                }
+            Card::Normal(_) => {
+                column!(card, self.view_detail())
+            }
+            Card::ArtSeries(_art_series) => {
+                let controls = row!(
+                    self.view_detail(),
+                    button("Flip Card").on_press(Message::NextFace {
+                        card_id: self.id().clone()
+                    })
+                );
+                column!(card, controls)
             }
             Card::Loading { .. } => column!(text("Loading card"),),
         };
@@ -230,7 +238,7 @@ impl Card {
     }
 
     async fn ensure_image(&mut self) -> Result<(), MessageError> {
-        if let Card::Loading { id, url } = self {
+        if let Card::Loading(LoadingCard { id, url }) = self {
             let (conn, image) = join(Database::connection(), download_image(url.clone())).await;
             let conn = conn.map_err(|_| MessageError::SQLConnection)?;
             let image = image?;
