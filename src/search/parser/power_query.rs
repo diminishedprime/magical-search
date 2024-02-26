@@ -28,7 +28,7 @@ impl Comparison {
     }
 }
 
-pub fn power(input: &str) -> IResult<&str, PowerQuery, ErrorTree<&str>> {
+pub fn power_query(input: &str) -> IResult<&str, PowerQuery, ErrorTree<&str>> {
     tuple((
         opt(tag("-")),
         alt((tag_no_case("power"), tag_no_case("pow"))),
@@ -75,7 +75,7 @@ mod tests {
 
     #[test]
     fn test_power_gt_3() {
-        let (_, actual) = power("pow>3").unwrap();
+        let (_, actual) = power_query("pow>3").unwrap();
         assert_eq!(
             actual,
             PowerQuery::new(
@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn test_power_toughness() {
-        let (_, actual) = power("power<=toughness").unwrap();
+        let (_, actual) = power_query("power<=toughness").unwrap();
         assert_eq!(
             actual,
             PowerQuery::new(ComparisonOperator::LessThanOrEqual, Comparison::Tougness,)
@@ -96,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_power_negated_toughness() {
-        let (_, actual) = power("-pow>2.5").unwrap();
+        let (_, actual) = power_query("-pow>2.5").unwrap();
         assert_eq!(
             actual,
             PowerQuery::new(

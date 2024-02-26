@@ -38,7 +38,7 @@ impl ToSql for ColorQuery {
         };
         let all_colors = ["W", "U", "B", "R", "G"].iter().map(|s| s.to_string());
         let all_colors_set: HashSet<String> = HashSet::from_iter(all_colors.clone());
-        let colors = HashSet::from_iter(self.color.as_set());
+        let colors = HashSet::from_iter(self.comparison.as_set());
         let clauses = match operator {
             ComparisonOperator::LessThan => {
                 let positive = colors

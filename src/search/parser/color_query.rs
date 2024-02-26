@@ -2,12 +2,13 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, tag_no_case},
     combinator::opt,
-    IResult,
+    sequence::tuple,
+    IResult, Parser,
 };
 use nom_supreme::error::ErrorTree;
 
 use super::{
-    color::{parse_color, Color},
+    color::{color, Color},
     comparison_operator::{comparison_operator, ComparisonOperator},
 };
 
@@ -16,23 +17,23 @@ use super::{
 #[derive(Debug, PartialEq, Eq)]
 pub struct ColorQuery {
     pub operator: ComparisonOperator,
-    pub color: Color,
+    pub comparison: Color,
     pub is_negated: bool,
 }
 
 pub fn color_query(input: &str) -> IResult<&str, ColorQuery, ErrorTree<&str>> {
-    let (input, negate) = opt(tag("-"))(input)?;
-    let (input, _) = alt((tag_no_case("color"), tag_no_case("c")))(input)?;
-    let (input, operator) = comparison_operator(input)?;
-    let (input, color) = parse_color(input)?;
-    Ok((
-        input,
-        ColorQuery {
-            operator,
-            color,
-            is_negated: negate.is_some(),
-        },
+    tuple((
+        opt(tag("-")),
+        alt((tag_no_case("color"), tag_no_case("c"))),
+        comparison_operator,
+        color,
     ))
+    .map(|(negate, _color_tag, operator, comparison)| ColorQuery {
+        operator,
+        comparison,
+        is_negated: negate.is_some(),
+    })
+    .parse(input)
 }
 
 #[cfg(test)]
@@ -43,14 +44,14 @@ mod tests {
         fn not(self) -> Self {
             Self {
                 operator: self.operator,
-                color: self.color,
+                comparison: self.comparison,
                 is_negated: !self.is_negated,
             }
         }
         pub fn new(operator: ComparisonOperator, color: Color) -> Self {
             Self {
                 operator,
-                color,
+                comparison: color,
                 is_negated: false,
             }
         }

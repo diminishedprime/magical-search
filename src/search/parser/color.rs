@@ -1,9 +1,9 @@
 use std::{collections::HashSet, fmt};
 
 use nom::{branch::alt, multi::many1, IResult, Parser};
-use nom_supreme::{error::ErrorTree, tag::complete::tag_no_case};
+use nom_supreme::{error::ErrorTree, tag::complete::tag_no_case, ParserExt};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Color {
     Red,
     Blue,
@@ -69,7 +69,9 @@ impl Color {
             _ => 5,
         }
     }
-    fn collapse(colors: Vec<Color>) -> Color {
+    fn collapse(mut colors: Vec<Color>) -> Color {
+        colors.sort();
+        colors.dedup();
         match colors.as_slice() {
             [Color::White, Color::Blue, Color::Black, Color::Red, Color::Green] => Color::WUBRG,
             [Color::White, Color::Black, Color::Red, Color::Green] => Color::Aggression,
@@ -147,50 +149,48 @@ impl fmt::Display for Color {
     }
 }
 
-fn parse_color_combinations(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
-    let (rest, mut colors) = many1(parse_basic_color)(input)?;
-    colors.sort();
-    colors.dedup();
-    let color = Color::collapse(colors);
-    Ok((rest, color))
+fn color_combinations(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
+    many1(basic_color).map(Color::collapse).parse(input)
 }
 
-fn parse_basic_color(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
+fn basic_color(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
     alt((
-        tag_no_case("w").map(|_| Color::White),
-        tag_no_case("u").map(|_| Color::Blue),
-        tag_no_case("b").map(|_| Color::Black),
-        tag_no_case("r").map(|_| Color::Red),
-        tag_no_case("g").map(|_| Color::Green),
+        tag_no_case("w").value(Color::White),
+        tag_no_case("u").value(Color::Blue),
+        tag_no_case("b").value(Color::Black),
+        tag_no_case("r").value(Color::Red),
+        tag_no_case("g").value(Color::Green),
     ))
     .parse(input)
 }
 
-fn parse_color_1(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
+fn color_1(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
     alt((
-        tag_no_case("abzan").map(|_| Color::Abzan),
-        tag_no_case("azorius").map(|_| Color::Azorius),
-        tag_no_case("bant").map(|_| Color::Bant),
-        tag_no_case("black").map(|_| Color::Black),
-        tag_no_case("blue").map(|_| Color::Blue),
-        tag_no_case("boros").map(|_| Color::Boros),
-        tag_no_case("colorless").map(|_| Color::Colorless),
-        tag_no_case("dimir").map(|_| Color::Dimir),
-        tag_no_case("esper").map(|_| Color::Esper),
-    ))(input)
+        tag_no_case("abzan").value(Color::Abzan),
+        tag_no_case("azorius").value(Color::Azorius),
+        tag_no_case("bant").value(Color::Bant),
+        tag_no_case("black").value(Color::Black),
+        tag_no_case("blue").value(Color::Blue),
+        tag_no_case("boros").value(Color::Boros),
+        tag_no_case("colorless").value(Color::Colorless),
+        tag_no_case("dimir").value(Color::Dimir),
+        tag_no_case("esper").value(Color::Esper),
+    ))
+    .parse(input)
 }
-fn parse_color_2(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
+fn color_2(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
     alt((
-        tag_no_case("golgari").map(|_| Color::Golgari),
-        tag_no_case("green").map(|_| Color::Green),
-        tag_no_case("grixis").map(|_| Color::Grixis),
-        tag_no_case("gruul").map(|_| Color::Gruul),
-        tag_no_case("izzet").map(|_| Color::Izzet),
-        tag_no_case("jeskai").map(|_| Color::Jeskai),
-        tag_no_case("jund").map(|_| Color::Jund),
-        tag_no_case("mardu").map(|_| Color::Mardu),
-        tag_no_case("multicolor").map(|_| Color::Multicolor),
-    ))(input)
+        tag_no_case("golgari").value(Color::Golgari),
+        tag_no_case("green").value(Color::Green),
+        tag_no_case("grixis").value(Color::Grixis),
+        tag_no_case("gruul").value(Color::Gruul),
+        tag_no_case("izzet").value(Color::Izzet),
+        tag_no_case("jeskai").value(Color::Jeskai),
+        tag_no_case("jund").value(Color::Jund),
+        tag_no_case("mardu").value(Color::Mardu),
+        tag_no_case("multicolor").value(Color::Multicolor),
+    ))
+    .parse(input)
 }
 
 // Both sets of keywords accepts full color names like blue or the abbreviated
@@ -203,24 +203,25 @@ fn parse_color_2(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
 //
 // Use c or colorless to match colorless cards, and m or multicolor to match
 // multicolor cards.
-pub fn parse_color(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
+pub fn color(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
     // I can "only" parse 21 at a time, so doing these in chunks of 10.
     alt((
-        parse_color_1,
-        parse_color_2,
-        tag_no_case("naya").map(|_| Color::Naya),
-        tag_no_case("orzhov").map(|_| Color::Orzhov),
-        tag_no_case("red").map(|_| Color::Red),
-        tag_no_case("rakdos").map(|_| Color::Rakdos),
-        tag_no_case("selesnya").map(|_| Color::Selesnya),
-        tag_no_case("simic").map(|_| Color::Simic),
-        tag_no_case("sultai").map(|_| Color::Sultai),
-        tag_no_case("temur").map(|_| Color::Temur),
-        tag_no_case("white").map(|_| Color::White),
-        tag_no_case("c").map(|_| Color::Colorless),
-        tag_no_case("m").map(|_| Color::Multicolor),
-        parse_color_combinations,
-    ))(input)
+        color_1,
+        color_2,
+        tag_no_case("naya").value(Color::Naya),
+        tag_no_case("orzhov").value(Color::Orzhov),
+        tag_no_case("red").value(Color::Red),
+        tag_no_case("rakdos").value(Color::Rakdos),
+        tag_no_case("selesnya").value(Color::Selesnya),
+        tag_no_case("simic").value(Color::Simic),
+        tag_no_case("sultai").value(Color::Sultai),
+        tag_no_case("temur").value(Color::Temur),
+        tag_no_case("white").value(Color::White),
+        tag_no_case("c").value(Color::Colorless),
+        tag_no_case("m").value(Color::Multicolor),
+        color_combinations,
+    ))
+    .parse(input)
 }
 
 #[cfg(test)]
@@ -232,211 +233,211 @@ mod tests {
 
     #[test]
     fn test_parse_color_abzan() {
-        let (_, color) = parse_color("abzan").unwrap();
+        let (_, color) = color("abzan").unwrap();
         assert_eq!(color, Color::Abzan);
     }
 
     #[test]
     fn test_parse_color_azorius() {
-        let (_, color) = parse_color("azorius").unwrap();
+        let (_, color) = color("azorius").unwrap();
         assert_eq!(color, Color::Azorius);
     }
 
     #[test]
     fn test_parse_color_b() {
-        let (_, color) = parse_color("b").unwrap();
+        let (_, color) = color("b").unwrap();
         assert_eq!(color, Color::Black);
     }
 
     #[test]
     fn test_parse_color_bant() {
-        let (_, color) = parse_color("bant").unwrap();
+        let (_, color) = color("bant").unwrap();
         assert_eq!(color, Color::Bant);
     }
 
     #[test]
     fn test_parse_color_black() {
-        let (_, color) = parse_color("black").unwrap();
+        let (_, color) = color("black").unwrap();
         assert_eq!(color, Color::Black);
     }
 
     #[test]
     fn test_parse_color_blue() {
-        let (_, color) = parse_color("blue").unwrap();
+        let (_, color) = color("blue").unwrap();
         assert_eq!(color, Color::Blue);
     }
 
     #[test]
     fn test_parse_color_boros() {
-        let (_, color) = parse_color("boros").unwrap();
+        let (_, color) = color("boros").unwrap();
         assert_eq!(color, Color::Boros);
     }
 
     #[test]
     fn test_parse_color_c() {
-        let (_, color) = parse_color("c").unwrap();
+        let (_, color) = color("c").unwrap();
         assert_eq!(color, Color::Colorless);
     }
 
     #[test]
     fn test_parse_color_colorless() {
-        let (_, color) = parse_color("colorless").unwrap();
+        let (_, color) = color("colorless").unwrap();
         assert_eq!(color, Color::Colorless);
     }
 
     #[test]
     fn test_parse_color_dimir() {
-        let (_, color) = parse_color("dimir").unwrap();
+        let (_, color) = color("dimir").unwrap();
         assert_eq!(color, Color::Dimir);
     }
 
     #[test]
     fn test_parse_color_esper() {
-        let (_, color) = parse_color("esper").unwrap();
+        let (_, color) = color("esper").unwrap();
         assert_eq!(color, Color::Esper);
     }
 
     #[test]
     fn test_parse_color_g() {
-        let (_, color) = parse_color("g").unwrap();
+        let (_, color) = color("g").unwrap();
         assert_eq!(color, Color::Green);
     }
 
     #[test]
     fn test_parse_color_golgari() {
-        let (_, color) = parse_color("golgari").unwrap();
+        let (_, color) = color("golgari").unwrap();
         assert_eq!(color, Color::Golgari);
     }
 
     #[test]
     fn test_parse_color_green() {
-        let (_, color) = parse_color("green").unwrap();
+        let (_, color) = color("green").unwrap();
         assert_eq!(color, Color::Green);
     }
 
     #[test]
     fn test_parse_color_grixis() {
-        let (_, color) = parse_color("grixis").unwrap();
+        let (_, color) = color("grixis").unwrap();
         assert_eq!(color, Color::Grixis);
     }
 
     #[test]
     fn test_parse_color_gruul() {
-        let (_, color) = parse_color("gruul").unwrap();
+        let (_, color) = color("gruul").unwrap();
         assert_eq!(color, Color::Gruul);
     }
 
     #[test]
     fn test_parse_color_izzet() {
-        let (_, color) = parse_color("izzet").unwrap();
+        let (_, color) = color("izzet").unwrap();
         assert_eq!(color, Color::Izzet);
     }
 
     #[test]
     fn test_parse_color_jeskai() {
-        let (_, color) = parse_color("jeskai").unwrap();
+        let (_, color) = color("jeskai").unwrap();
         assert_eq!(color, Color::Jeskai);
     }
 
     #[test]
     fn test_parse_color_jund() {
-        let (_, color) = parse_color("jund").unwrap();
+        let (_, color) = color("jund").unwrap();
         assert_eq!(color, Color::Jund);
     }
 
     #[test]
     fn test_parse_color_m() {
-        let (_, color) = parse_color("m").unwrap();
+        let (_, color) = color("m").unwrap();
         assert_eq!(color, Color::Multicolor);
     }
 
     #[test]
     fn test_parse_color_mardu() {
-        let (_, color) = parse_color("mardu").unwrap();
+        let (_, color) = color("mardu").unwrap();
         assert_eq!(color, Color::Mardu);
     }
 
     #[test]
     fn test_parse_color_multicolor() {
-        let (_, color) = parse_color("multicolor").unwrap();
+        let (_, color) = color("multicolor").unwrap();
         assert_eq!(color, Color::Multicolor);
     }
 
     #[test]
     fn test_parse_color_naya() {
-        let (_, color) = parse_color("naya").unwrap();
+        let (_, color) = color("naya").unwrap();
         assert_eq!(color, Color::Naya);
     }
 
     #[test]
     fn test_parse_color_orzhov() {
-        let (_, color) = parse_color("orzhov").unwrap();
+        let (_, color) = color("orzhov").unwrap();
         assert_eq!(color, Color::Orzhov);
     }
 
     #[test]
     fn test_parse_color_r() {
-        let (_, color) = parse_color("r").unwrap();
+        let (_, color) = color("r").unwrap();
         assert_eq!(color, Color::Red);
     }
 
     #[test]
     fn test_parse_color_rakdos() {
-        let (_, color) = parse_color("rakdos").unwrap();
+        let (_, color) = color("rakdos").unwrap();
         assert_eq!(color, Color::Rakdos);
     }
 
     #[test]
     fn test_parse_color_red() {
-        let (_, color) = parse_color("red").unwrap();
+        let (_, color) = color("red").unwrap();
         assert_eq!(color, Color::Red);
     }
 
     #[test]
     fn test_parse_color_selesnya() {
-        let (_, color) = parse_color("selesnya").unwrap();
+        let (_, color) = color("selesnya").unwrap();
         assert_eq!(color, Color::Selesnya);
     }
 
     #[test]
     fn test_parse_color_simic() {
-        let (_, color) = parse_color("simic").unwrap();
+        let (_, color) = color("simic").unwrap();
         assert_eq!(color, Color::Simic);
     }
 
     #[test]
     fn test_parse_color_sultai() {
-        let (_, color) = parse_color("sultai").unwrap();
+        let (_, color) = color("sultai").unwrap();
         assert_eq!(color, Color::Sultai);
     }
 
     #[test]
     fn test_parse_color_temur() {
-        let (_, color) = parse_color("temur").unwrap();
+        let (_, color) = color("temur").unwrap();
         assert_eq!(color, Color::Temur);
     }
 
     #[test]
     fn test_parse_color_u() {
-        let (_, color) = parse_color("u").unwrap();
+        let (_, color) = color("u").unwrap();
         assert_eq!(color, Color::Blue);
     }
 
     #[test]
     fn test_parse_color_w() {
-        let (_, color) = parse_color("w").unwrap();
+        let (_, color) = color("w").unwrap();
         assert_eq!(color, Color::White);
     }
 
     #[test]
     fn test_parse_color_white() {
-        let (_, color) = parse_color("white").unwrap();
+        let (_, color) = color("white").unwrap();
         assert_eq!(color, Color::White);
     }
 
     #[test]
     fn test_parse_an_embarassment_of_white() {
-        let (_, color) = parse_color("WWWWWWWWWW").unwrap();
+        let (_, color) = color("WWWWWWWWWW").unwrap();
         assert_eq!(color, Color::White);
     }
 
@@ -459,7 +460,7 @@ mod tests {
         let combinations = generate_color_combinations(num_colors);
         for combination in &combinations {
             let input = combination.join("");
-            let result = complete(parse_color)(&input);
+            let result = complete(color)(&input);
             assert!(
                 result.is_ok() && result.unwrap().0.is_empty(),
                 "Failed to parse color combination: {}",

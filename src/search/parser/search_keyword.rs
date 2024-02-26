@@ -6,7 +6,7 @@ use nom_supreme::error::ErrorTree;
 
 use super::{
     color_query::{color_query, ColorQuery},
-    power_query::{power, PowerQuery},
+    power_query::{power_query, PowerQuery},
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -23,7 +23,11 @@ pub enum Search {
 }
 
 pub fn search_keyword(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
-    alt((color_query.map(Search::color), power.map(Search::power))).parse(input)
+    alt((
+        color_query.map(Search::color),
+        power_query.map(Search::power),
+    ))
+    .parse(input)
 }
 
 fn and(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
