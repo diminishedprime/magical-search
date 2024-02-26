@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use nom::{branch::alt, bytes::complete::tag, IResult, Parser};
 use nom_supreme::{error::ErrorTree, ParserExt};
 
@@ -9,6 +11,19 @@ pub enum ComparisonOperator {
     Equal,
     GreaterThan,
     GreaterThanOrEqual,
+}
+
+impl Display for ComparisonOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ComparisonOperator::LessThan => write!(f, "<"),
+            ComparisonOperator::LessThanOrEqual => write!(f, "<="),
+            ComparisonOperator::NotEqual => write!(f, "!="),
+            ComparisonOperator::Equal => write!(f, "="),
+            ComparisonOperator::GreaterThan => write!(f, ">"),
+            ComparisonOperator::GreaterThanOrEqual => write!(f, ">="),
+        }
+    }
 }
 
 impl ComparisonOperator {
@@ -52,7 +67,7 @@ mod tests {
         let (_, actual) = comparison_operator("<=").unwrap();
         assert_eq!(actual, ComparisonOperator::LessThanOrEqual);
         let (_, actual) = comparison_operator(":").unwrap();
-        assert_eq!(actual, ComparisonOperator::LessThanOrEqual);
+        assert_eq!(actual, ComparisonOperator::GreaterThanOrEqual);
     }
 
     #[test]

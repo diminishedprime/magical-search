@@ -23,7 +23,18 @@ impl Database {
     }
 
     fn fetch_cards_with_search_sql(search: Search) -> String {
-        let clauses = search.to_sql();
+        let mut clauses = search.to_sql();
+        if !clauses.trim().is_empty() {
+            clauses = format!(
+                r#"
+WHERE
+{clauses}
+"#,
+                clauses = clauses
+            )
+            .trim()
+            .to_string();
+        };
         format!(
             r#"
 SELECT 
@@ -38,7 +49,6 @@ LEFT JOIN
     card_image_uris ON cards.id = card_image_uris.card_id
 LEFT JOIN 
     card_image_blobs ON cards.id = card_image_blobs.card_id
-WHERE
 {clauses}
 LIMIT :limit;
         "#,
@@ -112,24 +122,36 @@ mod tests {
             .await
             .unwrap();
         for id in card_ids {
-            let colors = conn
+            let (colors, name): ((bool, bool, bool, bool, bool, bool), String) = conn
                 .call(move |conn| {
                     let mut stmt = conn
-                        .prepare("SELECT color FROM card_colors WHERE card_id = :card_id;")
+                        .prepare("SELECT C,W,U,B,R,G, name FROM cards WHERE cards.id = :card_id;")
                         .unwrap();
                     let colors = stmt
-                        .query_map(&[(":card_id", &id)], |row| {
-                            let color: String = row.get(0)?;
-                            Ok(color)
+                        .query_row(&[(":card_id", &id)], |row| {
+                            Ok((
+                                (
+                                    row.get(0)?,
+                                    row.get(1)?,
+                                    row.get(2)?,
+                                    row.get(3)?,
+                                    row.get(4)?,
+                                    row.get(5)?,
+                                ),
+                                row.get(6)?,
+                            ))
                         })
-                        .unwrap()
-                        .collect::<Result<Vec<_>, _>>()
                         .unwrap();
                     Ok(colors)
                 })
                 .await
                 .unwrap();
-            assert_eq!(colors, vec!["W"]);
+            assert_eq!(
+                colors,
+                (false, true, false, false, false, false),
+                "{}",
+                name
+            );
         }
     }
 }

@@ -1,11 +1,12 @@
 mod color;
 mod color_query;
 mod comparison_operator;
+mod power_query;
 pub(crate) mod search_keyword;
 
 use nom_supreme::{error::ErrorTree, final_parser::final_parser};
 
-pub use self::{color_query::*, comparison_operator::*, search_keyword::*};
+pub use self::{color_query::*, comparison_operator::*, power_query::*, search_keyword::*};
 
 pub fn search(input: &str) -> Result<Search, ErrorTree<&str>> {
     final_parser(search_keyword::search)(input)

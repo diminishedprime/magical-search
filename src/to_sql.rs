@@ -2,10 +2,31 @@ use std::collections::HashSet;
 
 use itertools::Itertools;
 
-use crate::search::{ColorQuery, ComparisonOperator, Search, SearchKeyword};
+use crate::search::{
+    ColorQuery, Comparison, ComparisonOperator, PowerQuery, Search, SearchKeyword,
+};
 
 pub trait ToSql {
     fn to_sql(&self) -> String;
+}
+
+impl ToSql for PowerQuery {
+    fn to_sql(&self) -> String {
+        let operator = if self.is_negated {
+            self.operator.negate()
+        } else {
+            self.operator.clone()
+        };
+        let clauses = match &self.comparison {
+            Comparison::Number(num) => {
+                format!("cards.power{operator}{num}", operator = operator, num = num)
+            }
+            Comparison::Tougness => {
+                format!("cards.power{operator}cards.toughness", operator = operator)
+            }
+        };
+        format!("({clauses})", clauses = clauses)
+    }
 }
 
 impl ToSql for ColorQuery {
@@ -112,6 +133,7 @@ impl ToSql for SearchKeyword {
     fn to_sql(&self) -> String {
         match self {
             SearchKeyword::Color(color) => color.to_sql(),
+            SearchKeyword::Power(power) => power.to_sql(),
         }
     }
 }
@@ -188,35 +210,11 @@ mod tests {
         assert_eq!(actual, expected)
     }
 
-    //     #[test]
-    //     pub fn basic_search_to_sql() {
-    //         let search = search("c:W").unwrap();
-    //         panic!("{}", search.to_sql());
-    //         assert_eq!(
-    //             search.to_sql(),
-    //             r#"
-    // (SELECT COUNT(*)
-    //  FROM card_color_identity ci
-    //  WHERE ci.card_id = c.id
-    //  AND ci.color IN ('W')) <= 1
-    //         "#
-    //             .trim()
-    //         );
-    //     }
-
-    //     #[test]
-    //     pub fn search_including_or_to_sql() {
-    //         let search = search("c:W OR c:BUG").unwrap();
-    //         panic!("{}", search.to_sql());
-    //         assert_eq!(
-    //             search.to_sql(),
-    //             r#"
-    // (SELECT COUNT(*)
-    //  FROM card_color_identity ci
-    //  WHERE ci.card_id = c.id
-    //  AND ci.color IN ('W')) <= 1
-    //         "#
-    //             .trim()
-    //         );
-    //     }
+    #[test]
+    pub fn equals_esper_and_power_equals_touhgness() {
+        let search = search::search("c=ESPER pow=toughness").unwrap();
+        let actual = search.to_sql();
+        let expected = "(cards.B=TRUE AND cards.G=FALSE AND cards.R=FALSE AND cards.U=TRUE AND cards.W=TRUE) AND (cards.power=cards.toughness)";
+        assert_eq!(actual, expected)
+    }
 }

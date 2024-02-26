@@ -75,11 +75,11 @@ mod tests {
     }
 
     #[test]
-    fn test_color_query_lte_green_2() {
+    fn test_color_query_gte_green_2() {
         let (_, actual) = color_query("color:green").unwrap();
         assert_eq!(
             actual,
-            ColorQuery::new(ComparisonOperator::LessThanOrEqual, Color::Green)
+            ColorQuery::new(ComparisonOperator::GreaterThanOrEqual, Color::Green)
         );
     }
 

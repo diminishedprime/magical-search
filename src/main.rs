@@ -13,6 +13,7 @@ use iced::{
     widget::{column, container, text, TextInput},
     Application, Command, Length, Settings, Theme,
 };
+use search::Search;
 use thiserror::Error;
 
 use crate::card_detail::CardDetail;
@@ -132,11 +133,13 @@ impl Application for MagicalSearch {
                 };
                 if let Ok(search) = search {
                     Command::perform(Cards::fetch_cards_with_query(search), Message::CardsLoaded)
-                } else {
+                } else if input == "" {
                     Command::perform(
-                        Cards::fetch_cards_with_search(input.to_string()),
+                        Cards::fetch_cards_with_query(Search::and(vec![])),
                         Message::CardsLoaded,
                     )
+                } else {
+                    Command::none()
                 }
             }
             Message::CardLoaded(card) => {

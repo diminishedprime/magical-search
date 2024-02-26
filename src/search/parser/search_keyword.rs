@@ -4,11 +4,15 @@ use nom::{
 };
 use nom_supreme::error::ErrorTree;
 
-use super::color_query::{color_query, ColorQuery};
+use super::{
+    color_query::{color_query, ColorQuery},
+    power_query::{power, PowerQuery},
+};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum SearchKeyword {
     Color(ColorQuery),
+    Power(PowerQuery),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -19,7 +23,7 @@ pub enum Search {
 }
 
 pub fn search_keyword(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
-    alt((color_query.map(Search::color),)).parse(input)
+    alt((color_query.map(Search::color), power.map(Search::power))).parse(input)
 }
 
 fn and(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
@@ -35,7 +39,7 @@ fn or(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
 }
 
 impl Search {
-    fn and(searches: Vec<Search>) -> Self {
+    pub fn and(searches: Vec<Search>) -> Self {
         if searches.len() == 1 {
             searches
                 .into_iter()
@@ -57,6 +61,9 @@ impl Search {
     }
     fn color(color: ColorQuery) -> Self {
         Self::Keyword(SearchKeyword::Color(color))
+    }
+    fn power(power: PowerQuery) -> Self {
+        Self::Keyword(SearchKeyword::Power(power))
     }
 }
 
@@ -82,7 +89,7 @@ mod tests {
         assert_eq!(
             actual,
             Search::leaf(SearchKeyword::Color(ColorQuery::new(
-                ComparisonOperator::LessThanOrEqual,
+                ComparisonOperator::GreaterThanOrEqual,
                 Color::Red
             )))
         );
