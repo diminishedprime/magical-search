@@ -10,8 +10,10 @@ mod types;
 use card::{Card, LoadedCard};
 use cards::Cards;
 use iced::{
-    widget::{column, container, text, TextInput},
-    Application, Command, Length, Settings, Theme,
+    widget::{
+        column, scrollable as make_scrollable, scrollable::Viewport, text, Container, TextInput,
+    },
+    Alignment, Application, Command, Length, Settings, Theme,
 };
 use search::Search;
 use thiserror::Error;
@@ -20,8 +22,12 @@ use crate::card_detail::CardDetail;
 
 static INITIAL_SEARCH: &str = "";
 pub static CARDS_PER_ROW: usize = 6;
-pub static COLUMNS: usize = 3;
-pub static LIMIT: usize = CARDS_PER_ROW * COLUMNS;
+pub static ROWS: usize = 4;
+pub static LIMIT: usize = CARDS_PER_ROW * ROWS;
+
+const SPACING_SMALL: u16 = 2;
+// const SPACING_MEDIUM: u16 = SPACING_SMALL * 2;
+// const SPACING_LARGE: u16 = SPACING_SMALL * 3;
 
 enum MagicalSearch {
     Loading,
@@ -59,6 +65,7 @@ enum Message {
     CardsLoaded(Result<Cards, MessageError>),
     CardLoaded(Result<Card, MessageError>),
     CardDetailLoaded(Result<CardDetail, MessageError>),
+    Scrolled(Viewport),
 }
 
 impl Application for MagicalSearch {
@@ -209,6 +216,10 @@ impl Application for MagicalSearch {
                 }
                 Command::none()
             }
+            Message::Scrolled(_viewport) => {
+                // println!("Scrolled: {:?}", viewport);
+                Command::none()
+            }
         }
     }
 
@@ -225,15 +236,17 @@ impl Application for MagicalSearch {
                     let text_input = TextInput::new("Search", &state.search)
                         .on_input(|input| Message::SearchInputChanged(input));
                     column![text_input, cards,]
+                        .align_items(Alignment::Center)
+                        .padding(SPACING_SMALL)
                 }
             }
         };
 
-        container(content)
+        Container::new(make_scrollable(content).on_scroll(|viewport| Message::Scrolled(viewport)))
             .width(Length::Fill)
             .height(Length::Fill)
+            .padding(SPACING_SMALL)
             .center_x()
-            .center_y()
             .into()
     }
 }

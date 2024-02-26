@@ -9,7 +9,7 @@ use tokio_rusqlite::Connection;
 use crate::{
     database::Database,
     db::{GET_CARD, GET_CARD_FACE, WRITE_FACE_SMALL_BLOB, WRITE_SMALL_IMAGE_BLOB},
-    Message, MessageError,
+    Message, MessageError, SPACING_SMALL,
 };
 
 #[derive(Debug, Clone)]
@@ -162,45 +162,54 @@ impl Card {
     }
 
     pub fn view(&self) -> Element<Message> {
-        match self {
+        let height = 210;
+        let width = 150;
+        let image_part = match self {
+            Card::Loaded(loaded_card) => match loaded_card {
+                LoadedCard::Normal(loaded_card) => match &loaded_card.image {
+                    Some(image) => column!(Image::new(Handle::from_memory(image.clone()))
+                        .content_fit(iced::ContentFit::Contain),),
+                    None => column!(
+                        text(loaded_card.name.clone()),
+                        text(loaded_card.cmc.unwrap_or(0.0)),
+                    ),
+                },
+                LoadedCard::ArtSeries(ArtSeries { face, .. }) => match face {
+                    Some(image) => {
+                        column!(Image::new(Handle::from_memory(image.clone())))
+                    }
+                    None => column!(text("No image for this face.")),
+                },
+            },
+            Card::Loading { .. } => column!(text("Loading card"),),
+        }
+        .height(height)
+        .width(width);
+
+        let content = match self {
             Card::Loaded(loaded_card) => {
                 let view_detail = button("Load Card").on_press(Message::CardClicked {
                     card_id: self.id().clone(),
                 });
                 match loaded_card {
-                    LoadedCard::Normal(loaded_card) => match &loaded_card.image {
-                        Some(image) => column!(
-                            Image::new(Handle::from_memory(image.clone()))
-                                .content_fit(iced::ContentFit::None),
-                            view_detail
-                        )
-                        .into(),
-                        None => column!(
-                            text(loaded_card.name.clone()),
-                            text(loaded_card.cmc.unwrap_or(0.0)),
-                            view_detail
-                        )
-                        .into(),
-                    },
-                    LoadedCard::ArtSeries(ArtSeries { face, .. }) => {
+                    LoadedCard::Normal(_loaded_card) => column!(image_part, view_detail),
+                    LoadedCard::ArtSeries(ArtSeries { .. }) => {
                         let controls = row!(
                             view_detail,
                             button("Flip Card").on_press(Message::NextFace {
                                 card_id: self.id().clone()
                             })
                         );
-                        match face {
-                            Some(image) => {
-                                column!(Image::new(Handle::from_memory(image.clone())), controls)
-                            }
-                            None => column!(text("No image for this face."), controls),
-                        }
-                        .into()
+                        column!(image_part, controls)
                     }
                 }
             }
-            Card::Loading { .. } => column!(text("Loading card"),).into(),
-        }
+            Card::Loading { .. } => column!(text("Loading card"),),
+        };
+        content
+            .align_items(iced::Alignment::Center)
+            .padding(SPACING_SMALL)
+            .into()
     }
 
     async fn write_small_blob(
