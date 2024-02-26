@@ -101,7 +101,7 @@ impl ToSql for ColorQuery {
                     .sorted()
                     .map(|color| format!("cards.{color}=TRUE", color = color))
                     .join(" AND ");
-                format!("({at_least})", at_least = at_least)
+                format!("{at_least}", at_least = at_least)
             }
         };
         format!("({clauses})", clauses = clauses)
@@ -153,6 +153,38 @@ mod tests {
         let search = search::search("c!=ESPER").unwrap();
         let actual = search.to_sql();
         let expected = "(cards.B=FALSE AND cards.U=FALSE AND cards.W=FALSE)";
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    pub fn greater_or_equal_esper() {
+        let search = search::search("c:ESPER").unwrap();
+        let actual = search.to_sql();
+        let expected = "(cards.B=TRUE AND cards.U=TRUE AND cards.W=TRUE)";
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    pub fn other_greater_or_equal_esper() {
+        let search = search::search("c>=ESPER").unwrap();
+        let actual = search.to_sql();
+        let expected = "(cards.B=TRUE AND cards.U=TRUE AND cards.W=TRUE)";
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    pub fn less_than_or_equal_esper() {
+        let search = search::search("c<=ESPER").unwrap();
+        let actual = search.to_sql();
+        let expected = "((cards.B=TRUE OR cards.U=TRUE OR cards.W=TRUE) AND (cards.G=FALSE AND cards.R=FALSE))";
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    pub fn less_than_esper() {
+        let search = search::search("c<ESPER").unwrap();
+        let actual = search.to_sql();
+        let expected = "((cards.B=TRUE OR cards.U=TRUE OR cards.W=TRUE) AND (NOT (cards.B=TRUE AND cards.U=TRUE AND cards.W=TRUE)) AND (cards.G=FALSE AND cards.R=FALSE))";
         assert_eq!(actual, expected)
     }
 

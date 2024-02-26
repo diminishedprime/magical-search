@@ -1,4 +1,7 @@
-use nom::{branch::alt, bytes::complete::tag_no_case, multi::separated_list1, IResult, Parser};
+use nom::{
+    branch::alt, bytes::complete::tag_no_case, character::complete::space1, multi::separated_list1,
+    IResult, Parser,
+};
 use nom_supreme::error::ErrorTree;
 
 use super::color_query::{color_query, ColorQuery};
@@ -20,7 +23,7 @@ pub fn search_keyword(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
 }
 
 fn and(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
-    separated_list1(tag_no_case(" AND "), search_keyword)
+    separated_list1(alt((tag_no_case(" AND "), space1)), search_keyword)
         .map(Search::and)
         .parse(input)
 }
@@ -82,6 +85,29 @@ mod tests {
                 ComparisonOperator::LessThanOrEqual,
                 Color::Red
             )))
+        );
+    }
+
+    #[test]
+    fn test_parse_search_multiple_implicit_and() {
+        let input = "color=red color=blue color=green";
+        let (_, actual) = search(input).unwrap();
+        assert_eq!(
+            actual,
+            Search::and(vec![
+                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                    ComparisonOperator::Equal,
+                    Color::Red
+                ))),
+                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                    ComparisonOperator::Equal,
+                    Color::Blue
+                ))),
+                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                    ComparisonOperator::Equal,
+                    Color::Green
+                )))
+            ])
         );
     }
 

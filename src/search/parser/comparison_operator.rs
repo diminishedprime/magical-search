@@ -30,7 +30,7 @@ pub fn comparison_operator(input: &str) -> IResult<&str, ComparisonOperator, Err
         tag("<=").value(ComparisonOperator::LessThanOrEqual),
         tag(">=").value(ComparisonOperator::GreaterThanOrEqual),
         tag("<").value(ComparisonOperator::LessThan),
-        tag(":").value(ComparisonOperator::LessThanOrEqual),
+        tag(":").value(ComparisonOperator::GreaterThanOrEqual),
         tag("=").value(ComparisonOperator::Equal),
         tag(">").value(ComparisonOperator::GreaterThan),
     ))
