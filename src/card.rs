@@ -1,6 +1,7 @@
 use iced::{
+    alignment::{self},
     futures::future::join,
-    widget::{button, column, container, image::Handle, row, text, Image},
+    widget::{button, column, container, image::Handle, text, Image},
     Command, Element,
 };
 use rusqlite::named_params;
@@ -9,7 +10,7 @@ use tokio_rusqlite::Connection;
 use crate::{
     database::Database,
     db::{GET_CARD, GET_CARD_FACE, WRITE_FACE_SMALL_BLOB, WRITE_SMALL_IMAGE_BLOB},
-    Message, MessageError, SPACING_SMALL,
+    Message, MessageError,
 };
 
 #[derive(Debug, Clone)]
@@ -180,44 +181,23 @@ impl Card {
         Ok(Card::art_series(id, name, face, next_face, num_faces))
     }
 
-    pub fn view_detail(&self) -> Element<Message> {
-        button("Load Card")
-            .on_press(Message::CardClicked {
-                card_id: self.id().clone(),
-            })
-            .into()
-    }
-
+    // TODO - I'd like to style the button to be transparent
     pub fn view(&self) -> Element<Message> {
         let height = 210;
         let width = 150;
-        let card = container(match self {
-            Card::Normal(normal) => normal.view(),
-            Card::ArtSeries(art_series) => art_series.view(),
-            Card::Loading(loading_card) => loading_card.view(),
-        })
-        .height(height)
-        .width(width);
-
-        let content = match self {
-            Card::Normal(_) => {
-                column!(card, self.view_detail())
-            }
-            Card::ArtSeries(_art_series) => {
-                let controls = row!(
-                    self.view_detail(),
-                    button("Flip Card").on_press(Message::NextFace {
-                        card_id: self.id().clone()
-                    })
-                );
-                column!(card, controls)
-            }
-            Card::Loading { .. } => column!(text("Loading card"),),
-        };
-        content
-            .align_items(iced::Alignment::Center)
-            .padding(SPACING_SMALL)
-            .into()
+        button(
+            container(match self {
+                Card::Normal(normal) => normal.view(),
+                Card::ArtSeries(art_series) => art_series.view(),
+                Card::Loading(loading_card) => loading_card.view(),
+            })
+            .align_x(alignment::Horizontal::Center)
+            .align_y(alignment::Vertical::Center)
+            .height(height)
+            .width(width),
+        )
+        .on_press(Message::CardClicked { card_id: self.id() })
+        .into()
     }
 
     async fn write_small_blob(
