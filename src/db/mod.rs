@@ -1,6 +1,8 @@
 #[allow(dead_code)]
 pub static WRITE_SMALL_IMAGE_BLOB: &str = include_str!("write_small_image_blob.sql");
 #[allow(dead_code)]
+pub static WRITE_LARGE_IMAGE_BLOB: &str = include_str!("write_large_image_blob.sql");
+#[allow(dead_code)]
 pub static GET_CARDS: &str = include_str!("get_cards.sql");
 #[allow(dead_code)]
 pub static GET_CARD: &str = include_str!("get_card.sql");

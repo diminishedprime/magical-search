@@ -4,6 +4,10 @@ SELECT
     c.cmc,
     ciu.small AS small_image_url,
     cib.small AS small_image_blob,
+    ciu.normal AS normal_image_url,
+    cib.normal AS normal_image_blob,
+    ciu.large AS large_image_url,
+    cib.large AS large_image_blob,
     (SELECT COUNT(*) FROM card_faces_image_uris WHERE card_id = c.id) AS num_faces
 FROM 
     cards c

@@ -9,9 +9,69 @@ use tokio_rusqlite::Connection;
 
 use crate::{
     database::Database,
-    db::{GET_CARD, GET_CARD_FACE, WRITE_FACE_SMALL_BLOB, WRITE_SMALL_IMAGE_BLOB},
+    db::{
+        GET_CARD, GET_CARD_FACE, WRITE_FACE_SMALL_BLOB, WRITE_LARGE_IMAGE_BLOB,
+        WRITE_SMALL_IMAGE_BLOB,
+    },
     Message, MessageError,
 };
+
+#[derive(Debug, Clone)]
+pub enum ImageSize {
+    Small,
+    Medium,
+    Large,
+}
+
+struct ImageInfo {
+    uri: Option<String>,
+    image: Option<Vec<u8>>,
+}
+
+pub struct CardInfo {
+    id: String,
+    name: String,
+    cmc: Option<f64>,
+    small: ImageInfo,
+    normal: ImageInfo,
+    large: ImageInfo,
+    num_faces: usize,
+}
+
+impl CardInfo {
+    pub fn best_uri(&self) -> Option<(String, ImageSize)> {
+        self.large
+            .uri
+            .as_ref()
+            .map(|uri| (uri.clone(), ImageSize::Large))
+            .or(self
+                .normal
+                .uri
+                .as_ref()
+                .map(|uri| (uri.clone(), ImageSize::Medium)))
+            .or(self
+                .small
+                .uri
+                .as_ref()
+                .map(|uri| (uri.clone(), ImageSize::Small)))
+    }
+    pub fn best_image(&self) -> Option<(Vec<u8>, ImageSize)> {
+        self.large
+            .image
+            .clone()
+            .map(|image| (image, ImageSize::Large))
+            .or(self
+                .normal
+                .image
+                .clone()
+                .map(|image| (image, ImageSize::Medium)))
+            .or(self
+                .small
+                .image
+                .clone()
+                .map(|image| (image, ImageSize::Small)))
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct NormalCard {
@@ -57,7 +117,9 @@ impl ArtSeries {
 pub struct LoadingCard {
     pub id: String,
     pub url: String,
+    pub size: ImageSize,
 }
+
 impl LoadingCard {
     fn view(&self) -> Element<Message> {
         column!(text("Loading card"),).into()
@@ -109,8 +171,8 @@ impl Card {
         })
     }
 
-    pub fn loading(id: String, url: String) -> Self {
-        Self::Loading(LoadingCard { id, url })
+    pub fn loading(id: String, url: String, size: ImageSize) -> Self {
+        Self::Loading(LoadingCard { id, url, size })
     }
 
     pub fn id(&self) -> String {
@@ -121,19 +183,7 @@ impl Card {
         }
     }
 
-    pub async fn get_card_info(
-        id: String,
-    ) -> Result<
-        (
-            String,
-            String,
-            Option<f64>,
-            Option<String>,
-            Option<Vec<u8>>,
-            usize,
-        ),
-        MessageError,
-    > {
+    pub async fn get_card_info(id: String) -> Result<CardInfo, MessageError> {
         let conn = Database::connection()
             .await
             .map_err(|_| MessageError::SQLConnection)?;
@@ -142,13 +192,24 @@ impl Card {
         conn.call(move |conn| {
             let mut stmt = conn.prepare(GET_CARD)?;
             let card = stmt.query_row(&[(":id", &id)], |row| {
-                let id: String = row.get(0)?;
-                let name: String = row.get(1)?;
-                let cmc: Option<f64> = row.get(2)?;
-                let url: Option<String> = row.get(3)?;
-                let image: Option<Vec<u8>> = row.get(4)?;
-                let num_faces: usize = row.get(5)?;
-                Ok((id, name, cmc, url, image, num_faces))
+                Ok(CardInfo {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    cmc: row.get(2)?,
+                    small: ImageInfo {
+                        uri: row.get(3)?,
+                        image: row.get(4)?,
+                    },
+                    normal: ImageInfo {
+                        uri: row.get(5)?,
+                        image: row.get(6)?,
+                    },
+                    large: ImageInfo {
+                        uri: row.get(7)?,
+                        image: row.get(8)?,
+                    },
+                    num_faces: row.get(9)?,
+                })
             })?;
             Ok(card)
         })
@@ -157,28 +218,43 @@ impl Card {
     }
 
     pub async fn get_card(id: String) -> Result<Card, MessageError> {
-        let (id, name, cmc, url, image, num_faces) = Self::get_card_info(id).await?;
-        let mut card = if num_faces > 0 {
-            let face = Self::get_card_face(id.clone(), 0).await?;
-            return Ok(Card::art_series(id, name, face, 0, num_faces));
-        } else if url.is_some() && image.is_none() {
-            Card::loading(id, url.unwrap())
+        let card_info = Self::get_card_info(id).await?;
+        if card_info.num_faces > 0 {
+            let face = Self::get_card_face(card_info.id.clone(), 0).await?;
+            return Ok(Card::art_series(
+                card_info.id,
+                card_info.name,
+                face,
+                0,
+                card_info.num_faces,
+            ));
+        };
+        let mut card = if let Some((blob, _)) = card_info.best_image() {
+            Card::normal_card(card_info.id, card_info.name, card_info.cmc, Some(blob))
+        } else if let Some((uri, size)) = card_info.best_uri() {
+            Card::loading(card_info.id, uri, size)
         } else {
-            Card::normal_card(id, name, cmc, image)
+            Card::normal_card(card_info.id, card_info.name, card_info.cmc, None)
         };
         card.ensure_image().await?;
         Ok(card)
     }
 
     pub async fn next_card_face(id: String, current_face: usize) -> Result<Card, MessageError> {
-        let (id, name, _, _, _, num_faces) = Self::get_card_info(id.clone()).await?;
-        let next_face = if current_face + 1 < num_faces {
+        let card_info = Self::get_card_info(id.clone()).await?;
+        let next_face = if current_face + 1 < card_info.num_faces {
             current_face + 1
         } else {
             0
         };
         let face = Self::get_card_face(id.clone(), next_face).await?;
-        Ok(Card::art_series(id, name, face, next_face, num_faces))
+        Ok(Card::art_series(
+            id,
+            card_info.name,
+            face,
+            next_face,
+            card_info.num_faces,
+        ))
     }
 
     // TODO - I'd like to style the button to be transparent
@@ -200,17 +276,33 @@ impl Card {
         .into()
     }
 
-    async fn write_small_blob(
+    async fn write_blob(
         conn: &Connection,
         id: String,
+        size: ImageSize,
         image: Vec<u8>,
     ) -> Result<(), MessageError> {
         conn.call(move |conn| {
-            let mut stmt = conn.prepare(WRITE_SMALL_IMAGE_BLOB)?;
-            stmt.execute(named_params! {
-                ":card_id": id,
-                ":small_blob": image,
-            })?;
+            match size {
+                ImageSize::Small => {
+                    let mut stmt = conn.prepare(WRITE_SMALL_IMAGE_BLOB)?;
+                    stmt.execute(named_params! {
+                        ":card_id": id,
+                        ":small_blob": image,
+                    })?;
+                }
+                ImageSize::Medium => {
+                    // TODO - write medium blob
+                    unimplemented!("Medium blob not implemented")
+                }
+                ImageSize::Large => {
+                    let mut stmt = conn.prepare(WRITE_LARGE_IMAGE_BLOB)?;
+                    stmt.execute(named_params! {
+                        ":card_id": id,
+                        ":large_blob": image,
+                    })?;
+                }
+            }
             Ok(())
         })
         .await
@@ -218,13 +310,18 @@ impl Card {
     }
 
     async fn ensure_image(&mut self) -> Result<(), MessageError> {
-        if let Card::Loading(LoadingCard { id, url }) = self {
+        if let Card::Loading(LoadingCard { id, url, size }) = self {
             let (conn, image) = join(Database::connection(), download_image(url.clone())).await;
             let conn = conn.map_err(|_| MessageError::SQLConnection)?;
             let image = image?;
-            Self::write_small_blob(&conn, id.clone(), image.clone()).await?;
-            let (id, name, cmc, _, _, _) = Self::get_card_info(id.clone()).await?;
-            *self = Card::normal_card(id.clone(), name.clone(), cmc, Some(image));
+            Self::write_blob(&conn, id.clone(), size.clone(), image.clone()).await?;
+            let card_info = Self::get_card_info(id.clone()).await?;
+            *self = Card::normal_card(
+                id.clone(),
+                card_info.name.clone(),
+                card_info.cmc,
+                Some(image),
+            );
         }
         Ok(())
     }
