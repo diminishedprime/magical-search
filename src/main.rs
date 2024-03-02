@@ -95,55 +95,56 @@ impl Application for MagicalSearch {
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
-        match message {
-            Message::SearchInputChanged(ref input) => {
-                let search = search::search(input);
-                match search::search(input) {
-                    Ok(query) => println!("Parsed query: {:?}", query),
-                    Err(_) => println!("Error parsing query"),
+        match self {
+            MagicalSearch::Loading => match message {
+                Message::LoadRow(ids) => {
+                    let ids = ids.expect("I need to figure out better error handling here.");
+                    let new_cards = ids.iter().map(|id| Card::loading(id.to_string()));
+                    let commands: Vec<_> =
+                        new_cards.clone().map(|card| card.load_action()).collect();
+                    *self = MagicalSearch::Loaded {
+                        state: AppState {
+                            search: INITIAL_SEARCH.to_string(),
+                            current_cards: Cards::new(new_cards.collect()),
+                            selected_card_detail: None,
+                        },
+                    };
+                    Command::batch(commands)
                 }
-                match self {
-                    MagicalSearch::Loaded { state } => {
-                        state.search = input.to_string();
+                _ => Command::none(),
+            },
+            MagicalSearch::Loaded { state } => match message {
+                Message::SearchInputChanged(ref input) => {
+                    let search = search::search(input);
+                    state.search = input.to_string();
+                    state.current_cards.clear();
+                    if let Ok(search) = search {
+                        Command::perform(Cards::next_row(0, search), Message::LoadRow)
+                    } else if input == "" {
+                        Command::perform(Cards::next_row(0, Search::and(vec![])), Message::LoadRow)
+                    } else {
+                        Command::none()
                     }
-                    _ => (),
-                };
-                if let Ok(search) = search {
-                    Command::perform(Cards::next_row(0, search), Message::LoadRow)
-                } else if input == "" {
-                    Command::perform(Cards::next_row(0, Search::and(vec![])), Message::LoadRow)
-                } else {
-                    Command::none()
                 }
-            }
-            Message::CardLoaded(card) => {
-                match card {
-                    Ok(card) => match self {
-                        MagicalSearch::Loading => panic!("I don't think this should ever happen"),
-                        MagicalSearch::Loaded { state } => {
-                            println!(
-                                "Checking to see if loaded card is in current cards: {:?}",
-                                card.id()
-                            );
+                Message::CardLoaded(card) => {
+                    match card {
+                        Ok(card) => {
                             if let Some(current_card_idx) = state
                                 .current_cards
                                 .contents
                                 .iter()
                                 .position(|c| c.id() == card.id())
                             {
-                                println!("Card was found in current cards: {:?}", card.id());
                                 state.current_cards.contents[current_card_idx] = card;
                             };
                         }
-                    },
-                    Err(e) => {
-                        todo!("I'm not sure when this would happen, yet: {:?}", e)
+                        Err(e) => {
+                            todo!("I'm not sure when this would happen, yet: {:?}", e)
+                        }
                     }
+                    Command::none()
                 }
-                Command::none()
-            }
-            Message::CardClicked { card_id } => match self {
-                MagicalSearch::Loaded { state } => {
+                Message::CardClicked { card_id } => {
                     if let Some(_) = &state.selected_card_detail {
                         state.selected_card_detail = None;
                         Command::none()
@@ -161,71 +162,56 @@ impl Application for MagicalSearch {
                         Command::none()
                     }
                 }
-                _ => Command::none(),
-            },
-            Message::CardDetailLoaded(card_detail) => {
-                match card_detail {
-                    Ok(card_detail) => match self {
-                        MagicalSearch::Loaded { state } => {
-                            state.selected_card_detail = Some(card_detail);
-                        }
+                Message::CardDetailLoaded(card_detail) => {
+                    match card_detail {
+                        Ok(card_detail) => state.selected_card_detail = Some(card_detail),
                         _ => (),
-                    },
-                    _ => (),
+                    }
+                    Command::none()
                 }
-                Command::none()
-            }
-            Message::NextFace { card_id, .. } => {
-                if let MagicalSearch::Loaded { state } = self {
-                    if let Some(idx) = state
-                        .current_cards
-                        .contents
-                        .iter()
-                        .position(|c| c.id() == card_id)
-                    {
-                        if let Card::ArtSeries(ref mut art_series) =
-                            state.current_cards.contents[idx]
+                Message::NextFace { card_id, .. } => {
+                    if let MagicalSearch::Loaded { state } = self {
+                        if let Some(idx) = state
+                            .current_cards
+                            .contents
+                            .iter()
+                            .position(|c| c.id() == card_id)
                         {
+                            if let Card::ArtSeries(ref mut art_series) =
+                                state.current_cards.contents[idx]
+                            {
+                                return Command::perform(
+                                    Card::next_card_face(card_id.clone(), art_series.selected_face),
+                                    Message::CardLoaded,
+                                );
+                            }
+                        }
+                    }
+                    Command::none()
+                }
+                Message::Scrolled(viewport) => {
+                    if viewport.relative_offset().y >= 1.0 {
+                        if let MagicalSearch::Loaded { state } = self {
+                            let cursor = state.current_cards.cursor.clone();
+                            let search =
+                                search::search(&state.search).unwrap_or(Search::and(vec![]));
                             return Command::perform(
-                                Card::next_card_face(card_id.clone(), art_series.selected_face),
-                                Message::CardLoaded,
+                                Cards::next_row(cursor, search),
+                                Message::LoadRow,
                             );
                         }
                     }
+                    Command::none()
                 }
-                Command::none()
-            }
-            Message::Scrolled(viewport) => {
-                if viewport.relative_offset().y >= 1.0 {
-                    println!("getting next row.");
-                    if let MagicalSearch::Loaded { state } = self {
-                        let cursor = state.current_cards.cursor.clone();
-                        let search = search::search(&state.search).unwrap_or(Search::and(vec![]));
-                        return Command::perform(Cards::next_row(cursor, search), Message::LoadRow);
-                    }
+                Message::LoadRow(ids) => {
+                    let ids = ids.expect("I need to figure out better error handling here.");
+                    let new_cards = ids.iter().map(|id| Card::loading(id.to_string()));
+                    let commands: Vec<_> =
+                        new_cards.clone().map(|card| card.load_action()).collect();
+                    state.current_cards.extend_cards(new_cards);
+                    Command::batch(commands)
                 }
-                Command::none()
-            }
-            Message::LoadRow(ids) => {
-                let ids = ids.expect("I need to figure out better error handling here.");
-                let new_cards = ids.iter().map(|id| Card::loading(id.to_string()));
-                let commands: Vec<_> = new_cards.clone().map(|card| card.load_action()).collect();
-                match self {
-                    MagicalSearch::Loading => {
-                        *self = MagicalSearch::Loaded {
-                            state: AppState {
-                                search: INITIAL_SEARCH.to_string(),
-                                current_cards: Cards::new(new_cards.collect()),
-                                selected_card_detail: None,
-                            },
-                        };
-                    }
-                    MagicalSearch::Loaded { state } => {
-                        state.current_cards.extend_cards(new_cards);
-                    }
-                }
-                Command::batch(commands)
-            }
+            },
         }
     }
 

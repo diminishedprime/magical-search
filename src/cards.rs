@@ -13,6 +13,10 @@ pub struct Cards {
 }
 
 impl Cards {
+    pub fn clear(&mut self) {
+        self.contents.clear();
+        self.cursor = 0;
+    }
     pub fn new(cards: Vec<Card>) -> Self {
         Self {
             cursor: cards.len(),
