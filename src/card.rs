@@ -157,10 +157,6 @@ pub enum Card {
 }
 
 impl Card {
-    pub fn is_loading(&self) -> bool {
-        matches!(self, Card::Loading { .. })
-    }
-
     pub fn load_action(&self) -> Command<Message> {
         if let Card::Loading(LoadingCard { id, .. }) = self {
             println!("Card is a loading card, getting card: {}", id);

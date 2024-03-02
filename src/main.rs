@@ -62,7 +62,6 @@ enum Message {
     CardClicked { card_id: String },
     NextFace { card_id: String },
     SearchInputChanged(String),
-    CardsLoaded(Result<Cards, MessageError>),
     CardLoaded(Result<Card, MessageError>),
     CardDetailLoaded(Result<CardDetail, MessageError>),
     Scrolled(Viewport),
@@ -78,10 +77,13 @@ impl Application for MagicalSearch {
     fn new(_flags: Self::Flags) -> (Self, iced::Command<Self::Message>) {
         (
             MagicalSearch::Loading,
-            Command::perform(
-                Cards::fetch_cards_with_search(INITIAL_SEARCH.to_string()),
-                Message::CardsLoaded,
-            ),
+            // Command::perform(Cards::next_row(0, Search::and(vec![])), Message::LoadRow),
+            // TODO - This is what I'd like to avoid
+            Command::batch(vec![
+                Command::perform(Cards::next_row(0, Search::and(vec![])), Message::LoadRow),
+                Command::perform(Cards::next_row(2, Search::and(vec![])), Message::LoadRow),
+                Command::perform(Cards::next_row(5, Search::and(vec![])), Message::LoadRow),
+            ]),
         )
     }
 
@@ -94,39 +96,6 @@ impl Application for MagicalSearch {
 
     fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
         match message {
-            Message::CardsLoaded(result) => {
-                let mut commands = Vec::new();
-                match result {
-                    Ok(cards) => match self {
-                        MagicalSearch::Loaded { state } => {
-                            for card in &cards.contents {
-                                if card.is_loading() {
-                                    commands.push(card.load_action());
-                                }
-                            }
-                            state.current_cards = cards;
-                        }
-                        MagicalSearch::Loading => {
-                            for card in &cards.contents {
-                                if card.is_loading() {
-                                    commands.push(card.load_action());
-                                }
-                            }
-                            *self = MagicalSearch::Loaded {
-                                state: AppState {
-                                    current_cards: cards,
-                                    search: INITIAL_SEARCH.to_string(),
-                                    selected_card_detail: None,
-                                },
-                            };
-                        }
-                    },
-                    Err(e) => {
-                        panic!("Error loading initial state: {:?}", e);
-                    }
-                }
-                Command::batch(commands)
-            }
             Message::SearchInputChanged(ref input) => {
                 let search = search::search(input);
                 match search::search(input) {
@@ -140,12 +109,9 @@ impl Application for MagicalSearch {
                     _ => (),
                 };
                 if let Ok(search) = search {
-                    Command::perform(Cards::fetch_cards_with_query(search), Message::CardsLoaded)
+                    Command::perform(Cards::next_row(0, search), Message::LoadRow)
                 } else if input == "" {
-                    Command::perform(
-                        Cards::fetch_cards_with_query(Search::and(vec![])),
-                        Message::CardsLoaded,
-                    )
+                    Command::perform(Cards::next_row(0, Search::and(vec![])), Message::LoadRow)
                 } else {
                     Command::none()
                 }
@@ -241,25 +207,24 @@ impl Application for MagicalSearch {
                 Command::none()
             }
             Message::LoadRow(ids) => {
-                if let MagicalSearch::Loaded { state } = self {
-                    if let Ok(ids) = ids {
-                        let new_cards = ids.iter().map(|id| Card::loading(id.to_string()));
-                        let commands: Vec<_> =
-                            new_cards.clone().map(|card| card.load_action()).collect();
-                        println!(
-                            "Card length before extend: {}",
-                            state.current_cards.contents.len()
-                        );
+                let ids = ids.expect("I need to figure out better error handling here.");
+                let new_cards = ids.iter().map(|id| Card::loading(id.to_string()));
+                let commands: Vec<_> = new_cards.clone().map(|card| card.load_action()).collect();
+                match self {
+                    MagicalSearch::Loading => {
+                        *self = MagicalSearch::Loaded {
+                            state: AppState {
+                                search: INITIAL_SEARCH.to_string(),
+                                current_cards: Cards::new(new_cards.collect()),
+                                selected_card_detail: None,
+                            },
+                        };
+                    }
+                    MagicalSearch::Loaded { state } => {
                         state.current_cards.extend_cards(new_cards);
-                        // state.current_cards.contents.extend(new_cards);
-                        println!(
-                            "Card length after extend: {}",
-                            state.current_cards.contents.len()
-                        );
-                        return Command::batch(commands);
                     }
                 }
-                Command::none()
+                Command::batch(commands)
             }
         }
     }

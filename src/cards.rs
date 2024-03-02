@@ -1,14 +1,10 @@
 use iced::{
-    futures::{stream::FuturesOrdered, TryStreamExt},
     widget::{Column, Row},
     Element,
 };
 use itertools::Itertools;
 
-use crate::{
-    card::Card, database::Database, db::GET_CARDS_NAME_LIKE, search::Search, Message, MessageError,
-    CARDS_PER_ROW, LIMIT,
-};
+use crate::{card::Card, database::Database, search::Search, Message, MessageError, CARDS_PER_ROW};
 
 #[derive(Debug, Clone)]
 pub struct Cards {
@@ -41,55 +37,11 @@ impl Cards {
         image_grid.into()
     }
 
-    pub async fn fetch_cards_with_query(search: Search) -> Result<Cards, MessageError> {
-        let cards = Database::fetch_cards_with_search(search)
-            .await
-            .map_err(|_| MessageError::SQLQuery)?;
-        Ok(cards)
-    }
-
     pub async fn next_row(cursor: usize, search: Search) -> Result<Vec<String>, MessageError> {
         Ok(
             Database::fetch_card_ids(cursor, search)
                 .await
                 .expect("Unable to fetch card ids"), // .map_err(|_| MessageError::SQLQuery)?
         )
-    }
-
-    pub async fn fetch_cards_with_search(search: String) -> Result<Cards, MessageError> {
-        let conn = Database::connection()
-            .await
-            .map_err(|_| MessageError::SQLConnection)?;
-
-        let search = search.to_string();
-        let cards = conn
-            .call(move |conn| {
-                let mut stmt = conn.prepare(GET_CARDS_NAME_LIKE)?;
-                let cards = stmt
-                    .query_map(
-                        &[
-                            (":like", &format!("%{}%", search)),
-                            (":limit", &LIMIT.to_string()),
-                        ],
-                        |row| {
-                            let id: String = row.get(0)?;
-                            Ok(id)
-                        },
-                    )?
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(cards)
-            })
-            .await
-            .expect("Coludn't load initial cards");
-        // .map_err(|_| MessageError::SQLQuery)?;
-
-        let cards: Vec<Card> = cards
-            .into_iter()
-            .map(|id| Card::get_card(id))
-            .collect::<FuturesOrdered<_>>()
-            .try_collect()
-            .await?;
-
-        Ok(Cards::new(cards))
     }
 }
