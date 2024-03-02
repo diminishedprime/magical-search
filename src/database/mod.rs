@@ -20,19 +20,6 @@ impl Database {
         tokio_rusqlite::Connection::open(Database::path()).await
     }
 
-    fn fetch_card_ids_sql(search: &Search) -> String {
-        format!(
-            r#"
-SELECT cards.id
-FROM cards
-{clauses}
-LIMIT :limit
-OFFSET :cursor;
-"#,
-            clauses = search.to_clauses()
-        )
-    }
-
     pub async fn fetch_card_ids(
         cursor: usize,
         search: Search,
@@ -40,7 +27,10 @@ OFFSET :cursor;
         let conn = Database::connection().await?;
         let card_ids = conn
             .call(move |conn| {
-                let mut stmt = conn.prepare(&Self::fetch_card_ids_sql(&search))?;
+                let mut stmt = conn.prepare(&format!(
+                    include_str!("get_ids_with_clauses.sql"),
+                    clauses = search.to_clauses()
+                ))?;
                 let card_ids = stmt
                     .query_map(&[(":cursor", &cursor), (":limit", &CARDS_PER_ROW)], |row| {
                         let id: String = row.get(0)?;

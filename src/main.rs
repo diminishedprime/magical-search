@@ -81,8 +81,8 @@ impl Application for MagicalSearch {
             // TODO - This is what I'd like to avoid
             Command::batch(vec![
                 Command::perform(Cards::next_row(0, Search::and(vec![])), Message::LoadRow),
-                Command::perform(Cards::next_row(2, Search::and(vec![])), Message::LoadRow),
-                Command::perform(Cards::next_row(5, Search::and(vec![])), Message::LoadRow),
+                Command::perform(Cards::next_row(3, Search::and(vec![])), Message::LoadRow),
+                Command::perform(Cards::next_row(6, Search::and(vec![])), Message::LoadRow),
             ]),
         )
     }
