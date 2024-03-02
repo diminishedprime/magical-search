@@ -79,11 +79,7 @@ impl Application for MagicalSearch {
             MagicalSearch::Loading,
             // Command::perform(Cards::next_row(0, Search::and(vec![])), Message::LoadRow),
             // TODO - This is what I'd like to avoid
-            Command::batch(vec![
-                Command::perform(Cards::next_row(0, Search::and(vec![])), Message::LoadRow),
-                Command::perform(Cards::next_row(3, Search::and(vec![])), Message::LoadRow),
-                Command::perform(Cards::next_row(6, Search::and(vec![])), Message::LoadRow),
-            ]),
+            Cards::initial_rows_for(Search::default()),
         )
     }
 
@@ -119,9 +115,9 @@ impl Application for MagicalSearch {
                     state.search = input.to_string();
                     state.current_cards.clear();
                     if let Ok(search) = search {
-                        Command::perform(Cards::next_row(0, search), Message::LoadRow)
+                        Cards::initial_rows_for(search)
                     } else if input == "" {
-                        Command::perform(Cards::next_row(0, Search::and(vec![])), Message::LoadRow)
+                        Cards::initial_rows_for(Search::default())
                     } else {
                         Command::none()
                     }

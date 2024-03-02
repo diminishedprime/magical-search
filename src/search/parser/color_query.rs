@@ -14,7 +14,7 @@ use super::{
 
 // Colors and Color Identity
 // You can find cards that are a certain color using the c: or color: keyword,
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ColorQuery {
     pub operator: ComparisonOperator,
     pub comparison: Color,

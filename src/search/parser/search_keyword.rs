@@ -11,14 +11,14 @@ use super::{
     Name,
 };
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum SearchKeyword {
     Color(ColorQuery),
     Power(PowerQuery),
     Name(Name),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Search {
     Keyword(SearchKeyword),
     And(Vec<Search>),
@@ -48,6 +48,12 @@ fn or(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
 
 pub fn search(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
     or.parse(input)
+}
+
+impl Default for Search {
+    fn default() -> Self {
+        Self::and(vec![])
+    }
 }
 
 impl Search {

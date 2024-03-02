@@ -1,6 +1,6 @@
 use iced::{
     widget::{Column, Row},
-    Element,
+    Command, Element,
 };
 use itertools::Itertools;
 
@@ -47,5 +47,13 @@ impl Cards {
                 .await
                 .expect("Unable to fetch card ids"), // .map_err(|_| MessageError::SQLQuery)?
         )
+    }
+
+    pub fn initial_rows_for(search: Search) -> Command<Message> {
+        Command::batch(vec![
+            Command::perform(Cards::next_row(0, search.clone()), Message::LoadRow),
+            Command::perform(Cards::next_row(3, search.clone()), Message::LoadRow),
+            Command::perform(Cards::next_row(6, search), Message::LoadRow),
+        ])
     }
 }

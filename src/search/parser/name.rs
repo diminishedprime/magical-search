@@ -6,7 +6,7 @@ use nom::{
 };
 use nom_supreme::{error::ErrorTree, tag::complete::tag, ParserExt};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Name {
     pub text: String,
 }
