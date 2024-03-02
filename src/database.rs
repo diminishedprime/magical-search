@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use iced::futures::{stream::FuturesOrdered, TryStreamExt};
 
-use crate::{card::Card, cards::Cards, search::Search, to_sql::ToSql, LIMIT};
+use crate::{card::Card, cards::Cards, search::Search, CARDS_PER_ROW, LIMIT};
 
 pub struct Database;
 
@@ -22,19 +22,41 @@ impl Database {
         tokio_rusqlite::Connection::open(Database::path()).await
     }
 
-    fn fetch_cards_with_search_sql(search: Search) -> String {
-        let mut clauses = search.to_sql();
-        if !clauses.trim().is_empty() {
-            clauses = format!(
-                r#"
-WHERE
+    fn fetch_card_ids_sql(search: &Search) -> String {
+        format!(
+            r#"
+SELECT cards.id
+FROM cards
 {clauses}
+LIMIT :limit
+OFFSET :cursor;
 "#,
-                clauses = clauses
-            )
-            .trim()
-            .to_string();
-        };
+            clauses = search.to_clauses()
+        )
+    }
+
+    pub async fn fetch_card_ids(
+        cursor: usize,
+        search: Search,
+    ) -> Result<Vec<String>, DatabaseErrors> {
+        let conn = Database::connection().await?;
+        let card_ids = conn
+            .call(move |conn| {
+                let mut stmt = conn.prepare(&Self::fetch_card_ids_sql(&search))?;
+                let card_ids = stmt
+                    .query_map(&[(":cursor", &cursor), (":limit", &CARDS_PER_ROW)], |row| {
+                        let id: String = row.get(0)?;
+                        Ok(id)
+                    })?
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(card_ids)
+            })
+            .await?;
+        Ok(card_ids)
+    }
+
+    fn fetch_cards_with_search_sql(search: Search) -> String {
+        let clauses = search.to_clauses();
         format!(
             r#"
 SELECT 

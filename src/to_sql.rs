@@ -164,6 +164,17 @@ impl ToSql for Search {
     }
 }
 
+impl Search {
+    pub fn to_clauses(&self) -> String {
+        let clauses = self.to_sql();
+        if !clauses.trim().is_empty() {
+            format!(r"WHERE {}", clauses).trim().to_string()
+        } else {
+            clauses
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,3 +1,5 @@
+use std::fmt::{self, Display, Formatter};
+
 use iced::{
     alignment::{self},
     futures::future::join,
@@ -23,12 +25,14 @@ pub enum ImageSize {
     Large,
 }
 
+#[derive(Debug, Clone)]
 struct ImageInfo {
     uri: Option<String>,
     image: Option<Vec<u8>>,
 }
 
-pub struct CardInfo {
+#[derive(Debug, Clone)]
+pub struct CardData {
     id: String,
     name: String,
     cmc: Option<f64>,
@@ -38,7 +42,17 @@ pub struct CardInfo {
     num_faces: usize,
 }
 
-impl CardInfo {
+impl Display for CardData {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "CardData {{ id: {}, name: {}, cmc: {:?}, num_faces: {} }}",
+            self.id, self.name, self.cmc, self.num_faces
+        )
+    }
+}
+
+impl CardData {
     pub fn best_uri(&self) -> Option<(String, ImageSize)> {
         self.large
             .uri
@@ -78,16 +92,26 @@ pub struct NormalCard {
     pub id: String,
     pub name: String,
     pub cmc: Option<f64>,
-    pub image: Option<Vec<u8>>,
+    pub image: Vec<u8>,
+}
+
+#[derive(Debug, Clone)]
+pub struct NoImageCard {
+    pub id: String,
+    pub name: String,
+    pub cmc: Option<f64>,
+}
+
+impl NoImageCard {
+    fn view(&self) -> Element<Message> {
+        column!(text(self.name.clone()), text(self.cmc.unwrap_or(0.0))).into()
+    }
 }
 
 impl NormalCard {
     fn view(&self) -> Element<Message> {
-        match &self.image {
-            Some(image) => column!(Image::new(Handle::from_memory(image.clone()))
-                .content_fit(iced::ContentFit::Contain),),
-            None => column!(text(self.name.clone()), text(self.cmc.unwrap_or(0.0)),),
-        }
+        column!(Image::new(Handle::from_memory(self.image.clone()))
+            .content_fit(iced::ContentFit::Contain),)
         .into()
     }
 }
@@ -116,8 +140,6 @@ impl ArtSeries {
 #[derive(Debug, Clone)]
 pub struct LoadingCard {
     pub id: String,
-    pub url: String,
-    pub size: ImageSize,
 }
 
 impl LoadingCard {
@@ -130,6 +152,7 @@ impl LoadingCard {
 pub enum Card {
     Normal(NormalCard),
     ArtSeries(ArtSeries),
+    NoImage(NoImageCard),
     Loading(LoadingCard),
 }
 
@@ -140,19 +163,24 @@ impl Card {
 
     pub fn load_action(&self) -> Command<Message> {
         if let Card::Loading(LoadingCard { id, .. }) = self {
+            println!("Card is a loading card, getting card: {}", id);
             Command::perform(Card::get_card(id.to_string()), Message::CardLoaded)
         } else {
             Command::none()
         }
     }
 
-    pub fn normal_card(id: String, name: String, cmc: Option<f64>, image: Option<Vec<u8>>) -> Self {
+    pub fn normal_card(id: String, name: String, cmc: Option<f64>, image: Vec<u8>) -> Self {
         Self::Normal(NormalCard {
             id,
             name,
             cmc,
             image,
         })
+    }
+
+    pub fn no_image_card(id: String, name: String, cmc: Option<f64>) -> Self {
+        Self::NoImage(NoImageCard { id, name, cmc })
     }
 
     pub fn art_series(
@@ -171,8 +199,8 @@ impl Card {
         })
     }
 
-    pub fn loading(id: String, url: String, size: ImageSize) -> Self {
-        Self::Loading(LoadingCard { id, url, size })
+    pub fn loading(id: String) -> Self {
+        Self::Loading(LoadingCard { id })
     }
 
     pub fn id(&self) -> String {
@@ -180,10 +208,11 @@ impl Card {
             Card::Normal(normal) => normal.id.clone(),
             Card::ArtSeries(art_series) => art_series.id.clone(),
             Card::Loading(LoadingCard { id, .. }) => id.clone(),
+            Card::NoImage(no_image) => no_image.id.clone(),
         }
     }
 
-    pub async fn get_card_info(id: String) -> Result<CardInfo, MessageError> {
+    pub async fn get_card_info(id: String) -> Result<CardData, MessageError> {
         let conn = Database::connection()
             .await
             .map_err(|_| MessageError::SQLConnection)?;
@@ -192,7 +221,7 @@ impl Card {
         conn.call(move |conn| {
             let mut stmt = conn.prepare(GET_CARD)?;
             let card = stmt.query_row(&[(":id", &id)], |row| {
-                Ok(CardInfo {
+                Ok(CardData {
                     id: row.get(0)?,
                     name: row.get(1)?,
                     cmc: row.get(2)?,
@@ -218,7 +247,8 @@ impl Card {
     }
 
     pub async fn get_card(id: String) -> Result<Card, MessageError> {
-        let card_info = Self::get_card_info(id).await?;
+        let card_info = Self::get_card_info(id.clone()).await?;
+        println!("Card info: {}", card_info);
         if card_info.num_faces > 0 {
             let face = Self::get_card_face(card_info.id.clone(), 0).await?;
             return Ok(Card::art_series(
@@ -229,14 +259,17 @@ impl Card {
                 card_info.num_faces,
             ));
         };
-        let mut card = if let Some((blob, _)) = card_info.best_image() {
-            Card::normal_card(card_info.id, card_info.name, card_info.cmc, Some(blob))
+        let card = if let Some((blob, _)) = card_info.best_image() {
+            println!("Card has image in database: {}", card_info.id);
+            Card::normal_card(card_info.id, card_info.name, card_info.cmc, blob)
         } else if let Some((uri, size)) = card_info.best_uri() {
-            Card::loading(card_info.id, uri, size)
+            println!("Downloading image for card: {}", card_info.id);
+            let image = Self::get_image(id, uri, size).await?;
+            Card::normal_card(card_info.id, card_info.name, card_info.cmc, image)
         } else {
-            Card::normal_card(card_info.id, card_info.name, card_info.cmc, None)
+            println!("Couldn't find image info for card: {}", card_info.id);
+            Card::no_image_card(card_info.id, card_info.name, card_info.cmc)
         };
-        card.ensure_image().await?;
         Ok(card)
     }
 
@@ -259,13 +292,14 @@ impl Card {
 
     // TODO - I'd like to style the button to be transparent
     pub fn view(&self) -> Element<Message> {
-        let height = 210;
-        let width = 150;
+        let height = 210 * 2;
+        let width = 150 * 2;
         button(
             container(match self {
                 Card::Normal(normal) => normal.view(),
                 Card::ArtSeries(art_series) => art_series.view(),
                 Card::Loading(loading_card) => loading_card.view(),
+                Card::NoImage(no_image) => no_image.view(),
             })
             .align_x(alignment::Horizontal::Center)
             .align_y(alignment::Vertical::Center)
@@ -309,21 +343,12 @@ impl Card {
         .map_err(|_| MessageError::SQLQuery)
     }
 
-    async fn ensure_image(&mut self) -> Result<(), MessageError> {
-        if let Card::Loading(LoadingCard { id, url, size }) = self {
-            let (conn, image) = join(Database::connection(), download_image(url.clone())).await;
-            let conn = conn.map_err(|_| MessageError::SQLConnection)?;
-            let image = image?;
-            Self::write_blob(&conn, id.clone(), size.clone(), image.clone()).await?;
-            let card_info = Self::get_card_info(id.clone()).await?;
-            *self = Card::normal_card(
-                id.clone(),
-                card_info.name.clone(),
-                card_info.cmc,
-                Some(image),
-            );
-        }
-        Ok(())
+    async fn get_image(id: String, url: String, size: ImageSize) -> Result<Vec<u8>, MessageError> {
+        let (conn, image) = join(Database::connection(), download_image(url)).await;
+        let conn = conn.map_err(|_| MessageError::SQLConnection)?;
+        let image = image?;
+        Self::write_blob(&conn, id, size, image.clone()).await?;
+        Ok(image)
     }
 
     async fn ensure_face_image(

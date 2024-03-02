@@ -21,8 +21,8 @@ use thiserror::Error;
 use crate::card_detail::CardDetail;
 
 static INITIAL_SEARCH: &str = "";
-pub static CARDS_PER_ROW: usize = 6;
-pub static ROWS: usize = 4;
+pub static CARDS_PER_ROW: usize = 3;
+pub static ROWS: usize = 3;
 pub static LIMIT: usize = CARDS_PER_ROW * ROWS;
 
 const SPACING_SMALL: u16 = 2;
@@ -66,6 +66,7 @@ enum Message {
     CardLoaded(Result<Card, MessageError>),
     CardDetailLoaded(Result<CardDetail, MessageError>),
     Scrolled(Viewport),
+    LoadRow(Result<Vec<String>, MessageError>),
 }
 
 impl Application for MagicalSearch {
@@ -98,7 +99,7 @@ impl Application for MagicalSearch {
                 match result {
                     Ok(cards) => match self {
                         MagicalSearch::Loaded { state } => {
-                            for card in &cards.0 {
+                            for card in &cards.contents {
                                 if card.is_loading() {
                                     commands.push(card.load_action());
                                 }
@@ -106,7 +107,7 @@ impl Application for MagicalSearch {
                             state.current_cards = cards;
                         }
                         MagicalSearch::Loading => {
-                            for card in &cards.0 {
+                            for card in &cards.contents {
                                 if card.is_loading() {
                                     commands.push(card.load_action());
                                 }
@@ -154,14 +155,19 @@ impl Application for MagicalSearch {
                     Ok(card) => match self {
                         MagicalSearch::Loading => panic!("I don't think this should ever happen"),
                         MagicalSearch::Loaded { state } => {
+                            println!(
+                                "Checking to see if loaded card is in current cards: {:?}",
+                                card.id()
+                            );
                             if let Some(current_card_idx) = state
                                 .current_cards
-                                .0
+                                .contents
                                 .iter()
                                 .position(|c| c.id() == card.id())
                             {
-                                state.current_cards.0[current_card_idx] = card;
-                            }
+                                println!("Card was found in current cards: {:?}", card.id());
+                                state.current_cards.contents[current_card_idx] = card;
+                            };
                         }
                     },
                     Err(e) => {
@@ -175,8 +181,11 @@ impl Application for MagicalSearch {
                     if let Some(_) = &state.selected_card_detail {
                         state.selected_card_detail = None;
                         Command::none()
-                    } else if let Some(card) =
-                        state.current_cards.0.iter().find(|c| c.id() == card_id)
+                    } else if let Some(card) = state
+                        .current_cards
+                        .contents
+                        .iter()
+                        .find(|c| c.id() == card_id)
                     {
                         Command::perform(
                             CardDetail::load_card_detail(card.clone()),
@@ -202,9 +211,15 @@ impl Application for MagicalSearch {
             }
             Message::NextFace { card_id, .. } => {
                 if let MagicalSearch::Loaded { state } = self {
-                    if let Some(idx) = state.current_cards.0.iter().position(|c| c.id() == card_id)
+                    if let Some(idx) = state
+                        .current_cards
+                        .contents
+                        .iter()
+                        .position(|c| c.id() == card_id)
                     {
-                        if let Card::ArtSeries(ref mut art_series) = state.current_cards.0[idx] {
+                        if let Card::ArtSeries(ref mut art_series) =
+                            state.current_cards.contents[idx]
+                        {
                             return Command::perform(
                                 Card::next_card_face(card_id.clone(), art_series.selected_face),
                                 Message::CardLoaded,
@@ -214,8 +229,36 @@ impl Application for MagicalSearch {
                 }
                 Command::none()
             }
-            Message::Scrolled(_viewport) => {
-                // println!("Scrolled: {:?}", viewport);
+            Message::Scrolled(viewport) => {
+                if viewport.relative_offset().y >= 1.0 {
+                    println!("getting next row.");
+                    if let MagicalSearch::Loaded { state } = self {
+                        let cursor = state.current_cards.cursor.clone();
+                        let search = search::search(&state.search).unwrap_or(Search::and(vec![]));
+                        return Command::perform(Cards::next_row(cursor, search), Message::LoadRow);
+                    }
+                }
+                Command::none()
+            }
+            Message::LoadRow(ids) => {
+                if let MagicalSearch::Loaded { state } = self {
+                    if let Ok(ids) = ids {
+                        let new_cards = ids.iter().map(|id| Card::loading(id.to_string()));
+                        let commands: Vec<_> =
+                            new_cards.clone().map(|card| card.load_action()).collect();
+                        println!(
+                            "Card length before extend: {}",
+                            state.current_cards.contents.len()
+                        );
+                        state.current_cards.extend_cards(new_cards);
+                        // state.current_cards.contents.extend(new_cards);
+                        println!(
+                            "Card length after extend: {}",
+                            state.current_cards.contents.len()
+                        );
+                        return Command::batch(commands);
+                    }
+                }
                 Command::none()
             }
         }
@@ -250,5 +293,7 @@ impl Application for MagicalSearch {
 }
 
 pub fn main() -> iced::Result {
-    MagicalSearch::run(Settings::default())
+    let mut settings = Settings::default();
+    settings.window.size.height = settings.window.size.height + 200.0;
+    MagicalSearch::run(settings)
 }
