@@ -7,13 +7,18 @@ mod search;
 mod to_sql;
 mod types;
 
+use std::iter;
+
 use card::Card;
 use cards::Cards;
 use iced::{
     widget::{
-        column, scrollable as make_scrollable, scrollable::Viewport, text, Container, TextInput,
+        column,
+        container::{visible_bounds, Id},
+        scrollable::Viewport,
+        text, Container, TextInput,
     },
-    Alignment, Application, Command, Length, Settings, Theme,
+    Alignment, Application, Command, Length, Rectangle, Settings, Theme,
 };
 use search::Search;
 use thiserror::Error;
@@ -21,6 +26,11 @@ use thiserror::Error;
 use crate::card_detail::CardDetail;
 
 static INITIAL_SEARCH: &str = "";
+
+use once_cell::sync::Lazy;
+
+static SCROLLABLE_CONTAINER: Lazy<Id> = Lazy::new(|| Id::new("load more content"));
+
 pub static CARDS_PER_ROW: usize = 3;
 pub static ROWS: usize = 3;
 pub static LIMIT: usize = CARDS_PER_ROW * ROWS;
@@ -66,6 +76,7 @@ enum Message {
     CardDetailLoaded(Result<CardDetail, MessageError>),
     Scrolled(Viewport),
     LoadRow(Result<Vec<String>, MessageError>),
+    ScrollableVisibleBounds(Option<Rectangle>),
 }
 
 impl Application for MagicalSearch {
@@ -77,8 +88,6 @@ impl Application for MagicalSearch {
     fn new(_flags: Self::Flags) -> (Self, iced::Command<Self::Message>) {
         (
             MagicalSearch::Loading,
-            // Command::perform(Cards::next_row(0, Search::and(vec![])), Message::LoadRow),
-            // TODO - This is what I'd like to avoid
             Cards::initial_rows_for(Search::default()),
         )
     }
@@ -96,8 +105,11 @@ impl Application for MagicalSearch {
                 Message::LoadRow(ids) => {
                     let ids = ids.expect("I need to figure out better error handling here.");
                     let new_cards = ids.iter().map(|id| Card::loading(id.to_string()));
-                    let commands: Vec<_> =
+                    let mut commands: Vec<_> =
                         new_cards.clone().map(|card| card.load_action()).collect();
+                    let command = visible_bounds(SCROLLABLE_CONTAINER.clone())
+                        .map(Message::ScrollableVisibleBounds);
+                    commands.extend(iter::once(command));
                     *self = MagicalSearch::Loaded {
                         state: AppState {
                             search: INITIAL_SEARCH.to_string(),
@@ -189,8 +201,7 @@ impl Application for MagicalSearch {
                     if viewport.relative_offset().y >= 1.0 {
                         if let MagicalSearch::Loaded { state } = self {
                             let cursor = state.current_cards.cursor.clone();
-                            let search =
-                                search::search(&state.search).unwrap_or(Search::and(vec![]));
+                            let search = search::search(&state.search).unwrap_or(Search::default());
                             return Command::perform(
                                 Cards::next_row(cursor, search),
                                 Message::LoadRow,
@@ -201,11 +212,29 @@ impl Application for MagicalSearch {
                 }
                 Message::LoadRow(ids) => {
                     let ids = ids.expect("I need to figure out better error handling here.");
+                    // Stop if there are no more cards to load.
+                    if ids.len() == 0 {
+                        return Command::none();
+                    }
                     let new_cards = ids.iter().map(|id| Card::loading(id.to_string()));
-                    let commands: Vec<_> =
+                    let mut commands: Vec<_> =
                         new_cards.clone().map(|card| card.load_action()).collect();
                     state.current_cards.extend_cards(new_cards);
+                    println!("Adding command to check the bounds.");
+                    let command = visible_bounds(SCROLLABLE_CONTAINER.clone())
+                        .map(Message::ScrollableVisibleBounds);
+                    commands.extend(iter::once(command));
                     Command::batch(commands)
+                }
+                Message::ScrollableVisibleBounds(rect) => {
+                    if rect.is_some() {
+                        println!("Loading next row since the end is visible.");
+                        let cursor = state.current_cards.cursor.clone();
+                        let search = search::search(&state.search).unwrap_or(Search::default());
+                        Command::perform(Cards::next_row(cursor, search), Message::LoadRow)
+                    } else {
+                        Command::none()
+                    }
                 }
             },
         }
@@ -220,22 +249,26 @@ impl Application for MagicalSearch {
                 if let Some(selected_card) = &state.selected_card_detail {
                     column![selected_card.view()]
                 } else {
+                    let visible_check =
+                        Container::new(text("End of the line")).id(SCROLLABLE_CONTAINER.clone());
                     let cards = state.current_cards.view();
                     let text_input = TextInput::new("Search", &state.search)
                         .on_input(|input| Message::SearchInputChanged(input));
-                    column![text_input, cards,]
+                    column![text_input, cards, visible_check]
                         .align_items(Alignment::Center)
                         .padding(SPACING_SMALL)
                 }
             }
         };
 
-        Container::new(make_scrollable(content).on_scroll(|viewport| Message::Scrolled(viewport)))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(SPACING_SMALL)
-            .center_x()
-            .into()
+        Container::new(
+            iced::widget::scrollable(content).on_scroll(|viewport| Message::Scrolled(viewport)),
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .padding(SPACING_SMALL)
+        .center_x()
+        .into()
     }
 }
 

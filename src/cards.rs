@@ -50,10 +50,6 @@ impl Cards {
     }
 
     pub fn initial_rows_for(search: Search) -> Command<Message> {
-        Command::batch(vec![
-            Command::perform(Cards::next_row(0, search.clone()), Message::LoadRow),
-            Command::perform(Cards::next_row(3, search.clone()), Message::LoadRow),
-            Command::perform(Cards::next_row(6, search), Message::LoadRow),
-        ])
+        Command::perform(Cards::next_row(0, search.clone()), Message::LoadRow)
     }
 }
