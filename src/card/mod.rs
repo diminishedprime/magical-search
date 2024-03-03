@@ -13,15 +13,12 @@ use iced::{
 use tokio::spawn;
 
 use self::{
-    art_series::ArtSeries,
-    card_data::{CardData, ImageInfo, ImageSize},
-    loading::LoadingCard,
-    no_image::NoImageCard,
+    art_series::ArtSeries, card_data::ImageSize, loading::LoadingCard, no_image::NoImageCard,
     normal::NormalCard,
 };
 use crate::{
     database::{BytesWrapper, Database},
-    db::{GET_CARD, GET_CARD_FACE},
+    db::GET_CARD_FACE,
     Message, MessageError,
 };
 
@@ -84,48 +81,10 @@ impl Card {
         }
     }
 
-    pub async fn get_card_info(id: String) -> Result<CardData, MessageError> {
-        let conn = Database::connection()
-            .await
-            .map_err(|_| MessageError::SQLConnection)?;
-
-        let id = id.to_string();
-        conn.call(move |conn| {
-            let mut stmt = conn.prepare(GET_CARD)?;
-            let card = stmt.query_row(&[(":id", &id)], |row| {
-                Ok(CardData {
-                    id: row.get(0)?,
-                    name: row.get(1)?,
-                    cmc: row.get(2)?,
-                    small: ImageInfo {
-                        uri: row.get(3)?,
-                        image: row
-                            .get::<_, Option<BytesWrapper>>(4)
-                            .map(|b| b.map(|b| b.0))?,
-                    },
-                    normal: ImageInfo {
-                        uri: row.get(5)?,
-                        image: row
-                            .get::<_, Option<BytesWrapper>>(6)
-                            .map(|b| b.map(|b| b.0))?,
-                    },
-                    large: ImageInfo {
-                        uri: row.get(7)?,
-                        image: row
-                            .get::<_, Option<BytesWrapper>>(8)
-                            .map(|b| b.map(|b| b.0))?,
-                    },
-                    num_faces: row.get(9)?,
-                })
-            })?;
-            Ok(card)
-        })
-        .await
-        .map_err(|_| MessageError::SQLQuery)
-    }
-
     pub async fn get_card(id: String) -> Result<Card, MessageError> {
-        let card_info = Self::get_card_info(id.clone()).await?;
+        let card_info = Database::get_card_info(id.clone())
+            .await
+            .map_err(|_| MessageError::SQLQuery)?;
         if card_info.num_faces > 0 {
             let face = Self::get_card_face(card_info.id.clone(), 0).await?;
             return Ok(Card::art_series(
@@ -148,7 +107,9 @@ impl Card {
     }
 
     pub async fn next_card_face(id: String, current_face: usize) -> Result<Card, MessageError> {
-        let card_info = Self::get_card_info(id.clone()).await?;
+        let card_info = Database::get_card_info(id.clone())
+            .await
+            .map_err(|_| MessageError::SQLQuery)?;
         let next_face = if current_face + 1 < card_info.num_faces {
             current_face + 1
         } else {

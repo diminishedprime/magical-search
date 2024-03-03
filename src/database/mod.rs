@@ -9,8 +9,8 @@ use rusqlite::{
 };
 
 use crate::{
-    card::card_data::ImageSize,
-    db::{WRITE_FACE_SMALL_BLOB, WRITE_LARGE_IMAGE_BLOB, WRITE_SMALL_IMAGE_BLOB},
+    card::card_data::{CardData, ImageInfo, ImageSize},
+    db::{GET_CARD, WRITE_FACE_SMALL_BLOB, WRITE_LARGE_IMAGE_BLOB, WRITE_SMALL_IMAGE_BLOB},
     search::Search,
     CARDS_PER_ROW,
 };
@@ -102,6 +102,44 @@ impl Database {
         })
         .await
         .context("Couldn't write face image")
+    }
+
+    pub async fn get_card_info(id: String) -> Result<CardData, anyhow::Error> {
+        let conn = Database::connection().await?;
+
+        let cloned_id = id.to_string();
+        conn.call(move |conn| {
+            let mut stmt = conn.prepare(GET_CARD)?;
+            let card = stmt.query_row(&[(":id", &cloned_id)], |row| {
+                Ok(CardData {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    cmc: row.get(2)?,
+                    small: ImageInfo {
+                        uri: row.get(3)?,
+                        image: row
+                            .get::<_, Option<BytesWrapper>>(4)
+                            .map(|b| b.map(|b| b.0))?,
+                    },
+                    normal: ImageInfo {
+                        uri: row.get(5)?,
+                        image: row
+                            .get::<_, Option<BytesWrapper>>(6)
+                            .map(|b| b.map(|b| b.0))?,
+                    },
+                    large: ImageInfo {
+                        uri: row.get(7)?,
+                        image: row
+                            .get::<_, Option<BytesWrapper>>(8)
+                            .map(|b| b.map(|b| b.0))?,
+                    },
+                    num_faces: row.get(9)?,
+                })
+            })?;
+            Ok(card)
+        })
+        .await
+        .context(format!("Couldn't get card info for id: {}", id))
     }
 }
 

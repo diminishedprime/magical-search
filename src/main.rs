@@ -142,6 +142,10 @@ impl Application for MagicalSearch {
                                 .iter()
                                 .position(|c| c.id() == card.id())
                             {
+                                if let Some(_) = &state.selected_card_detail {
+                                    state.selected_card_detail =
+                                        Some(CardDetail::loaded(card.clone()));
+                                }
                                 state.current_cards.contents[current_card_idx] = card;
                             };
                         }
