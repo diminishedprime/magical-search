@@ -1,14 +1,25 @@
-use std::fmt::{self, Display, Formatter};
+mod art_series;
+mod card_data;
+mod loading;
+mod no_image;
+mod normal;
 
 use iced::{
     alignment::{self},
     futures::future::join,
-    widget::{button, column, container, image::Handle, text, Image},
+    widget::{button, container},
     Command, Element,
 };
 use rusqlite::named_params;
 use tokio_rusqlite::Connection;
 
+use self::{
+    art_series::ArtSeries,
+    card_data::{CardData, ImageInfo, ImageSize},
+    loading::LoadingCard,
+    no_image::NoImageCard,
+    normal::NormalCard,
+};
 use crate::{
     database::Database,
     db::{
@@ -17,136 +28,6 @@ use crate::{
     },
     Message, MessageError,
 };
-
-#[derive(Debug, Clone)]
-pub enum ImageSize {
-    Small,
-    Medium,
-    Large,
-}
-
-#[derive(Debug, Clone)]
-struct ImageInfo {
-    uri: Option<String>,
-    image: Option<Vec<u8>>,
-}
-
-#[derive(Debug, Clone)]
-pub struct CardData {
-    id: String,
-    name: String,
-    cmc: Option<f64>,
-    small: ImageInfo,
-    normal: ImageInfo,
-    large: ImageInfo,
-    num_faces: usize,
-}
-
-impl Display for CardData {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "CardData {{ id: {}, name: {}, cmc: {:?}, num_faces: {} }}",
-            self.id, self.name, self.cmc, self.num_faces
-        )
-    }
-}
-
-impl CardData {
-    pub fn best_uri(&self) -> Option<(String, ImageSize)> {
-        self.large
-            .uri
-            .as_ref()
-            .map(|uri| (uri.clone(), ImageSize::Large))
-            .or(self
-                .normal
-                .uri
-                .as_ref()
-                .map(|uri| (uri.clone(), ImageSize::Medium)))
-            .or(self
-                .small
-                .uri
-                .as_ref()
-                .map(|uri| (uri.clone(), ImageSize::Small)))
-    }
-    pub fn best_image(&self) -> Option<(Vec<u8>, ImageSize)> {
-        self.large
-            .image
-            .clone()
-            .map(|image| (image, ImageSize::Large))
-            .or(self
-                .normal
-                .image
-                .clone()
-                .map(|image| (image, ImageSize::Medium)))
-            .or(self
-                .small
-                .image
-                .clone()
-                .map(|image| (image, ImageSize::Small)))
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct NormalCard {
-    pub id: String,
-    pub name: String,
-    pub cmc: Option<f64>,
-    pub image: Vec<u8>,
-}
-
-#[derive(Debug, Clone)]
-pub struct NoImageCard {
-    pub id: String,
-    pub name: String,
-    pub cmc: Option<f64>,
-}
-
-impl NoImageCard {
-    fn view(&self) -> Element<Message> {
-        column!(text(self.name.clone()), text(self.cmc.unwrap_or(0.0))).into()
-    }
-}
-
-impl NormalCard {
-    fn view(&self) -> Element<Message> {
-        column!(Image::new(Handle::from_memory(self.image.clone()))
-            .content_fit(iced::ContentFit::Contain),)
-        .into()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ArtSeries {
-    pub id: String,
-    pub name: String,
-    pub selected_face: usize,
-    pub face: Option<Vec<u8>>,
-    pub num_faces: usize,
-}
-
-impl ArtSeries {
-    fn view(&self) -> Element<Message> {
-        match &self.face {
-            Some(image) => {
-                column!(Image::new(Handle::from_memory(image.clone())))
-            }
-            None => column!(text("No image for this face.")),
-        }
-        .into()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct LoadingCard {
-    pub id: String,
-}
-
-impl LoadingCard {
-    fn view(&self) -> Element<Message> {
-        column!(text("Loading card"),).into()
-    }
-}
 
 #[derive(Debug, Clone)]
 pub enum Card {
