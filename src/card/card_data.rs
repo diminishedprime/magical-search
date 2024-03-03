@@ -56,17 +56,17 @@ impl CardData {
     pub fn best_image(&self) -> Option<(Bytes, ImageSize)> {
         self.large
             .image
-            .clone()
-            .map(|image| (image, ImageSize::Large))
+            .as_ref()
+            .map(|image| (image.clone(), ImageSize::Large))
             .or(self
                 .normal
                 .image
-                .clone()
-                .map(|image| (image, ImageSize::Medium)))
+                .as_ref()
+                .map(|image| (image.clone(), ImageSize::Medium)))
             .or(self
                 .small
                 .image
-                .clone()
-                .map(|image| (image, ImageSize::Small)))
+                .as_ref()
+                .map(|image| (image.clone(), ImageSize::Small)))
     }
 }
