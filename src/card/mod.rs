@@ -182,7 +182,7 @@ impl Card {
         .into()
     }
 
-    async fn write_blob(
+    async fn write_card_image_blob(
         conn: &Connection,
         id: String,
         size: ImageSize,
@@ -219,7 +219,7 @@ impl Card {
         let (conn, image) = join(Database::connection(), download_image(url)).await;
         let conn = conn.map_err(|_| MessageError::SQLConnection)?;
         let image = image?;
-        Self::write_blob(&conn, id, size, image.clone()).await?;
+        Self::write_card_image_blob(&conn, id, size, image.clone()).await?;
         Ok(image)
     }
 
