@@ -10,7 +10,6 @@ use iced::{
     widget::{button, container},
     Command, Element,
 };
-use rusqlite::named_params;
 use tokio::spawn;
 
 use self::{
@@ -22,7 +21,7 @@ use self::{
 };
 use crate::{
     database::{BytesWrapper, Database},
-    db::{GET_CARD, GET_CARD_FACE, WRITE_FACE_SMALL_BLOB},
+    db::{GET_CARD, GET_CARD_FACE},
     Message, MessageError,
 };
 
@@ -196,23 +195,14 @@ impl Card {
         face_index: String,
         uri: String,
     ) -> Result<Option<Bytes>, MessageError> {
-        let conn = Database::connection()
-            .await
-            .map_err(|_| MessageError::SQLConnection)?;
         let image = download_image(uri).await?;
         let cloned_image = image.clone();
-        conn.call(move |conn| {
-            let mut stmt = conn.prepare(WRITE_FACE_SMALL_BLOB)?;
-            stmt.execute(named_params! {
-                ":card_id": card_id,
-                ":face_index": face_index,
-                ":small_blob": BytesWrapper(cloned_image),
-            })?;
-            Ok(())
-        })
-        .await
-        .expect("Couldn' get face face image");
-        // .map_err(|_| MessageError::SQLQuery)?;
+        spawn(Database::write_face_image_blob(
+            card_id,
+            face_index,
+            ImageSize::Small,
+            cloned_image,
+        ));
         Ok(Some(image))
     }
 

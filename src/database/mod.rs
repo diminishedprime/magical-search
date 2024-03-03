@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use anyhow::Context;
 use bytes::Bytes;
 use rusqlite::{
     named_params,
@@ -9,20 +10,12 @@ use rusqlite::{
 
 use crate::{
     card::card_data::ImageSize,
-    db::{WRITE_LARGE_IMAGE_BLOB, WRITE_SMALL_IMAGE_BLOB},
+    db::{WRITE_FACE_SMALL_BLOB, WRITE_LARGE_IMAGE_BLOB, WRITE_SMALL_IMAGE_BLOB},
     search::Search,
-    MessageError, CARDS_PER_ROW,
+    CARDS_PER_ROW,
 };
 
 pub struct Database;
-
-#[derive(thiserror::Error, Debug)]
-pub enum DatabaseErrors {
-    #[error("Failed to connect to local database")]
-    Connection(#[from] tokio_rusqlite::Error),
-    #[error("TODO - fix me")]
-    MessageError(#[from] crate::MessageError),
-}
 
 impl Database {
     fn path() -> PathBuf {
@@ -35,31 +28,30 @@ impl Database {
     pub async fn fetch_card_ids(
         cursor: usize,
         search: Search,
-    ) -> Result<Vec<String>, DatabaseErrors> {
+    ) -> Result<Vec<String>, anyhow::Error> {
         let conn = Database::connection().await?;
-        let card_ids = conn
-            .call(move |conn| {
-                let mut stmt = conn.prepare(&format!(
-                    include_str!("get_ids_with_clauses.sql"),
-                    clauses = search.to_clauses()
-                ))?;
-                let card_ids = stmt
-                    .query_map(&[(":cursor", &cursor), (":limit", &CARDS_PER_ROW)], |row| {
-                        let id: String = row.get(0)?;
-                        Ok(id)
-                    })?
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(card_ids)
-            })
-            .await?;
-        Ok(card_ids)
+        conn.call(move |conn| {
+            let mut stmt = conn.prepare(&format!(
+                include_str!("get_ids_with_clauses.sql"),
+                clauses = search.to_clauses()
+            ))?;
+            let card_ids = stmt
+                .query_map(&[(":cursor", &cursor), (":limit", &CARDS_PER_ROW)], |row| {
+                    let id: String = row.get(0)?;
+                    Ok(id)
+                })?
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(card_ids)
+        })
+        .await
+        .context("failed to fetch card ids.")
     }
 
     pub async fn write_card_image_blob(
         id: String,
         size: ImageSize,
         image: Bytes,
-    ) -> Result<(), DatabaseErrors> {
+    ) -> Result<(), anyhow::Error> {
         let conn = Database::connection().await?;
         conn.call(move |conn| {
             match size {
@@ -85,7 +77,31 @@ impl Database {
             Ok(())
         })
         .await
-        .map_err(|_| DatabaseErrors::MessageError(MessageError::SQLQuery))
+        .context("Failed to write image blob")
+    }
+
+    pub async fn write_face_image_blob(
+        card_id: String,
+        face_index: String,
+        size: ImageSize,
+        image: Bytes,
+    ) -> Result<(), anyhow::Error> {
+        let conn = Database::connection().await?;
+        conn.call(move |conn| {
+            let mut stmt = conn.prepare(WRITE_FACE_SMALL_BLOB)?;
+            match size {
+                ImageSize::Small => stmt.execute(named_params! {
+                    ":card_id": card_id,
+                    ":face_index": face_index,
+                    ":small_blob": BytesWrapper(image),
+                })?,
+                ImageSize::Medium => todo!(),
+                ImageSize::Large => todo!(),
+            };
+            Ok(())
+        })
+        .await
+        .context("Couldn't write face image")
     }
 }
 
