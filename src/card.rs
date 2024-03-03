@@ -159,7 +159,6 @@ pub enum Card {
 impl Card {
     pub fn load_action(&self) -> Command<Message> {
         if let Card::Loading(LoadingCard { id, .. }) = self {
-            println!("Card is a loading card, getting card: {}", id);
             Command::perform(Card::get_card(id.to_string()), Message::CardLoaded)
         } else {
             Command::none()
@@ -244,7 +243,6 @@ impl Card {
 
     pub async fn get_card(id: String) -> Result<Card, MessageError> {
         let card_info = Self::get_card_info(id.clone()).await?;
-        println!("Card info: {}", card_info);
         if card_info.num_faces > 0 {
             let face = Self::get_card_face(card_info.id.clone(), 0).await?;
             return Ok(Card::art_series(
@@ -256,14 +254,11 @@ impl Card {
             ));
         };
         let card = if let Some((blob, _)) = card_info.best_image() {
-            println!("Card has image in database: {}", card_info.id);
             Card::normal_card(card_info.id, card_info.name, card_info.cmc, blob)
         } else if let Some((uri, size)) = card_info.best_uri() {
-            println!("Downloading image for card: {}", card_info.id);
             let image = Self::get_image(id, uri, size).await?;
             Card::normal_card(card_info.id, card_info.name, card_info.cmc, image)
         } else {
-            println!("Couldn't find image info for card: {}", card_info.id);
             Card::no_image_card(card_info.id, card_info.name, card_info.cmc)
         };
         Ok(card)

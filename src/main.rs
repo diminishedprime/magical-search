@@ -7,7 +7,7 @@ mod search;
 mod to_sql;
 mod types;
 
-use std::iter;
+use std::{collections::HashSet, iter};
 
 use card::Card;
 use cards::Cards;
@@ -15,7 +15,6 @@ use iced::{
     widget::{
         column,
         container::{visible_bounds, Id},
-        scrollable::Viewport,
         text, Container, TextInput,
     },
     Alignment, Application, Command, Length, Rectangle, Settings, Theme,
@@ -74,9 +73,9 @@ enum Message {
     SearchInputChanged(String),
     CardLoaded(Result<Card, MessageError>),
     CardDetailLoaded(Result<CardDetail, MessageError>),
-    Scrolled(Viewport),
+    Scrolled,
     LoadRow(Result<Vec<String>, MessageError>),
-    ScrollableVisibleBounds(Option<Rectangle>),
+    EndOfCardsGridVisible(Option<Rectangle>),
 }
 
 impl Application for MagicalSearch {
@@ -108,7 +107,7 @@ impl Application for MagicalSearch {
                     let mut commands: Vec<_> =
                         new_cards.clone().map(|card| card.load_action()).collect();
                     let command = visible_bounds(SCROLLABLE_CONTAINER.clone())
-                        .map(Message::ScrollableVisibleBounds);
+                        .map(Message::EndOfCardsGridVisible);
                     commands.extend(iter::once(command));
                     *self = MagicalSearch::Loaded {
                         state: AppState {
@@ -197,21 +196,15 @@ impl Application for MagicalSearch {
                     }
                     Command::none()
                 }
-                Message::Scrolled(viewport) => {
-                    if viewport.relative_offset().y >= 1.0 {
-                        if let MagicalSearch::Loaded { state } = self {
-                            let cursor = state.current_cards.cursor.clone();
-                            let search = search::search(&state.search).unwrap_or(Search::default());
-                            return Command::perform(
-                                Cards::next_row(cursor, search),
-                                Message::LoadRow,
-                            );
-                        }
-                    }
-                    Command::none()
+                Message::Scrolled => {
+                    visible_bounds(SCROLLABLE_CONTAINER.clone()).map(Message::EndOfCardsGridVisible)
                 }
                 Message::LoadRow(ids) => {
                     let ids = ids.expect("I need to figure out better error handling here.");
+                    let mut ids: HashSet<String> = HashSet::from_iter(ids);
+                    for existing_card in &state.current_cards.contents {
+                        ids.remove(&existing_card.id());
+                    }
                     // Stop if there are no more cards to load.
                     if ids.len() == 0 {
                         return Command::none();
@@ -220,15 +213,13 @@ impl Application for MagicalSearch {
                     let mut commands: Vec<_> =
                         new_cards.clone().map(|card| card.load_action()).collect();
                     state.current_cards.extend_cards(new_cards);
-                    println!("Adding command to check the bounds.");
                     let command = visible_bounds(SCROLLABLE_CONTAINER.clone())
-                        .map(Message::ScrollableVisibleBounds);
+                        .map(Message::EndOfCardsGridVisible);
                     commands.extend(iter::once(command));
                     Command::batch(commands)
                 }
-                Message::ScrollableVisibleBounds(rect) => {
+                Message::EndOfCardsGridVisible(rect) => {
                     if rect.is_some() {
-                        println!("Loading next row since the end is visible.");
                         let cursor = state.current_cards.cursor.clone();
                         let search = search::search(&state.search).unwrap_or(Search::default());
                         Command::perform(Cards::next_row(cursor, search), Message::LoadRow)
@@ -261,14 +252,12 @@ impl Application for MagicalSearch {
             }
         };
 
-        Container::new(
-            iced::widget::scrollable(content).on_scroll(|viewport| Message::Scrolled(viewport)),
-        )
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .padding(SPACING_SMALL)
-        .center_x()
-        .into()
+        Container::new(iced::widget::scrollable(content).on_scroll(|_| Message::Scrolled))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(SPACING_SMALL)
+            .center_x()
+            .into()
     }
 }
 
