@@ -1,6 +1,11 @@
-use std::{path::PathBuf, time::SystemTime};
+use std::path::PathBuf;
 
-use rusqlite::named_params;
+use bytes::Bytes;
+use rusqlite::{
+    named_params,
+    types::{FromSql, ToSqlOutput, ValueRef},
+    ToSql,
+};
 
 use crate::{
     card::card_data::ImageSize,
@@ -53,39 +58,54 @@ impl Database {
     pub async fn write_card_image_blob(
         id: String,
         size: ImageSize,
-        image: Vec<u8>,
+        image: Bytes,
     ) -> Result<(), DatabaseErrors> {
-        println!("Current system time: {:?}", SystemTime::now());
-        println!("Running the async work that's writing the blob in the background.");
         let conn = Database::connection().await?;
-        let r = conn
-            .call(move |conn| {
-                match size {
-                    ImageSize::Small => {
-                        let mut stmt = conn.prepare(WRITE_SMALL_IMAGE_BLOB)?;
-                        stmt.execute(named_params! {
-                            ":card_id": id,
-                            ":small_blob": image,
-                        })?;
-                    }
-                    ImageSize::Medium => {
-                        // TODO - write medium blob
-                        unimplemented!("Medium blob not implemented")
-                    }
-                    ImageSize::Large => {
-                        let mut stmt = conn.prepare(WRITE_LARGE_IMAGE_BLOB)?;
-                        stmt.execute(named_params! {
-                            ":card_id": id,
-                            ":large_blob": image,
-                        })?;
-                    }
+        conn.call(move |conn| {
+            match size {
+                ImageSize::Small => {
+                    let mut stmt = conn.prepare(WRITE_SMALL_IMAGE_BLOB)?;
+                    stmt.execute(named_params! {
+                        ":card_id": id,
+                        ":small_blob": BytesWrapper(image),
+                    })?;
                 }
-                Ok(())
-            })
-            .await
-            .map_err(|_| MessageError::SQLQuery)?;
-        println!("Current system time: {:?}", SystemTime::now());
-        println!("Fully finished writing the blob in the background.");
-        Ok(r)
+                ImageSize::Medium => {
+                    // TODO - write medium blob
+                    unimplemented!("Medium blob not implemented")
+                }
+                ImageSize::Large => {
+                    let mut stmt = conn.prepare(WRITE_LARGE_IMAGE_BLOB)?;
+                    stmt.execute(named_params! {
+                        ":card_id": id,
+                        ":large_blob": BytesWrapper(image),
+                    })?;
+                }
+            }
+            Ok(())
+        })
+        .await
+        .map_err(|_| DatabaseErrors::MessageError(MessageError::SQLQuery))
+    }
+}
+
+pub struct BytesWrapper(pub Bytes);
+
+impl FromSql for BytesWrapper {
+    fn column_result(value: ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
+        match value {
+            // TODO - Null makes me think maybe I should be implementing an
+            // Option<BytesWrapper> or something instead?
+            ValueRef::Null | ValueRef::Integer(_) | ValueRef::Real(_) | ValueRef::Text(_) => {
+                Err(rusqlite::types::FromSqlError::InvalidType)
+            }
+            ValueRef::Blob(b) => Ok(BytesWrapper(Bytes::copy_from_slice(b))),
+        }
+    }
+}
+
+impl ToSql for BytesWrapper {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        Ok(ToSqlOutput::Borrowed(ValueRef::Blob(&self.0)))
     }
 }

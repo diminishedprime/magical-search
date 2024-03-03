@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use iced::{
     widget::{column, image::Handle, Image},
     Element,
@@ -10,7 +11,7 @@ pub struct NormalCard {
     pub id: String,
     pub name: String,
     pub cmc: Option<f64>,
-    pub image: Vec<u8>,
+    pub image: Bytes,
 }
 
 impl NormalCard {

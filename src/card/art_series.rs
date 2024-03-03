@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use iced::{
     widget::{column, image::Handle, text, Image},
     Element,
@@ -10,7 +11,7 @@ pub struct ArtSeries {
     pub id: String,
     pub name: String,
     pub selected_face: usize,
-    pub face: Option<Vec<u8>>,
+    pub face: Option<Bytes>,
     pub num_faces: usize,
 }
 

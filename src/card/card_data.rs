@@ -1,5 +1,7 @@
 use std::fmt::{self, Display, Formatter};
 
+use bytes::Bytes;
+
 #[derive(Debug, Clone)]
 pub enum ImageSize {
     Small,
@@ -10,7 +12,7 @@ pub enum ImageSize {
 #[derive(Debug, Clone)]
 pub struct ImageInfo {
     pub uri: Option<String>,
-    pub image: Option<Vec<u8>>,
+    pub image: Option<Bytes>,
 }
 
 #[derive(Debug, Clone)]
@@ -51,7 +53,7 @@ impl CardData {
                 .as_ref()
                 .map(|uri| (uri.clone(), ImageSize::Small)))
     }
-    pub fn best_image(&self) -> Option<(Vec<u8>, ImageSize)> {
+    pub fn best_image(&self) -> Option<(Bytes, ImageSize)> {
         self.large
             .image
             .clone()

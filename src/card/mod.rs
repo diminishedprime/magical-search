@@ -4,6 +4,7 @@ pub(crate) mod loading;
 pub(crate) mod no_image;
 pub(crate) mod normal;
 
+use bytes::Bytes;
 use iced::{
     alignment::{self},
     widget::{button, container},
@@ -20,7 +21,7 @@ use self::{
     normal::NormalCard,
 };
 use crate::{
-    database::Database,
+    database::{BytesWrapper, Database},
     db::{GET_CARD, GET_CARD_FACE, WRITE_FACE_SMALL_BLOB},
     Message, MessageError,
 };
@@ -42,7 +43,7 @@ impl Card {
         }
     }
 
-    pub fn normal_card(id: String, name: String, cmc: Option<f64>, image: Vec<u8>) -> Self {
+    pub fn normal_card(id: String, name: String, cmc: Option<f64>, image: Bytes) -> Self {
         Self::Normal(NormalCard {
             id,
             name,
@@ -58,7 +59,7 @@ impl Card {
     pub fn art_series(
         id: String,
         name: String,
-        face: Option<Vec<u8>>,
+        face: Option<Bytes>,
         selected_face: usize,
         num_faces: usize,
     ) -> Self {
@@ -99,15 +100,21 @@ impl Card {
                     cmc: row.get(2)?,
                     small: ImageInfo {
                         uri: row.get(3)?,
-                        image: row.get(4)?,
+                        image: row
+                            .get::<_, Option<BytesWrapper>>(4)
+                            .map(|b| b.map(|b| b.0))?,
                     },
                     normal: ImageInfo {
                         uri: row.get(5)?,
-                        image: row.get(6)?,
+                        image: row
+                            .get::<_, Option<BytesWrapper>>(6)
+                            .map(|b| b.map(|b| b.0))?,
                     },
                     large: ImageInfo {
                         uri: row.get(7)?,
-                        image: row.get(8)?,
+                        image: row
+                            .get::<_, Option<BytesWrapper>>(8)
+                            .map(|b| b.map(|b| b.0))?,
                     },
                     num_faces: row.get(9)?,
                 })
@@ -178,7 +185,7 @@ impl Card {
         .into()
     }
 
-    async fn get_image(id: String, url: String, size: ImageSize) -> Result<Vec<u8>, MessageError> {
+    async fn get_image(id: String, url: String, size: ImageSize) -> Result<Bytes, MessageError> {
         let image = download_image(url).await?;
         spawn(Database::write_card_image_blob(id, size, image.clone()));
         Ok(image)
@@ -188,7 +195,7 @@ impl Card {
         card_id: String,
         face_index: String,
         uri: String,
-    ) -> Result<Option<Vec<u8>>, MessageError> {
+    ) -> Result<Option<Bytes>, MessageError> {
         let conn = Database::connection()
             .await
             .map_err(|_| MessageError::SQLConnection)?;
@@ -199,7 +206,7 @@ impl Card {
             stmt.execute(named_params! {
                 ":card_id": card_id,
                 ":face_index": face_index,
-                ":small_blob": cloned_image,
+                ":small_blob": BytesWrapper(cloned_image),
             })?;
             Ok(())
         })
@@ -212,7 +219,7 @@ impl Card {
     async fn get_card_face(
         card_id: String,
         face_index: usize,
-    ) -> Result<Option<Vec<u8>>, MessageError> {
+    ) -> Result<Option<Bytes>, MessageError> {
         let conn = Database::connection()
             .await
             .map_err(|_| MessageError::SQLConnection)?;
@@ -230,8 +237,8 @@ impl Card {
                     ],
                     |row| {
                         let small_uri: Option<String> = row.get(0)?;
-                        let small_blob: Option<Vec<u8>> = row.get(1)?;
-                        Ok((small_uri, small_blob, face_index))
+                        let small_blob: Option<BytesWrapper> = row.get(1)?;
+                        Ok((small_uri, small_blob.map(|sb| sb.0), face_index))
                     },
                 )?;
                 Ok(card_face)
@@ -249,10 +256,10 @@ impl Card {
     }
 }
 
-async fn download_image(url: String) -> Result<Vec<u8>, MessageError> {
+async fn download_image(url: String) -> Result<Bytes, MessageError> {
     let response = reqwest::get(&url)
         .await
         .map_err(|_| MessageError::SQLQuery)?;
     let bytes = response.bytes().await.map_err(|_| MessageError::SQLQuery)?;
-    Ok(bytes.to_vec())
+    Ok(bytes)
 }
