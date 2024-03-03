@@ -1,17 +1,16 @@
-mod art_series;
-mod card_data;
-mod loading;
-mod no_image;
-mod normal;
+pub(crate) mod art_series;
+pub(crate) mod card_data;
+pub(crate) mod loading;
+pub(crate) mod no_image;
+pub(crate) mod normal;
 
 use iced::{
     alignment::{self},
-    futures::future::join,
     widget::{button, container},
     Command, Element,
 };
 use rusqlite::named_params;
-use tokio_rusqlite::Connection;
+use tokio::spawn;
 
 use self::{
     art_series::ArtSeries,
@@ -22,10 +21,7 @@ use self::{
 };
 use crate::{
     database::Database,
-    db::{
-        GET_CARD, GET_CARD_FACE, WRITE_FACE_SMALL_BLOB, WRITE_LARGE_IMAGE_BLOB,
-        WRITE_SMALL_IMAGE_BLOB,
-    },
+    db::{GET_CARD, GET_CARD_FACE, WRITE_FACE_SMALL_BLOB},
     Message, MessageError,
 };
 
@@ -182,44 +178,9 @@ impl Card {
         .into()
     }
 
-    async fn write_card_image_blob(
-        conn: &Connection,
-        id: String,
-        size: ImageSize,
-        image: Vec<u8>,
-    ) -> Result<(), MessageError> {
-        conn.call(move |conn| {
-            match size {
-                ImageSize::Small => {
-                    let mut stmt = conn.prepare(WRITE_SMALL_IMAGE_BLOB)?;
-                    stmt.execute(named_params! {
-                        ":card_id": id,
-                        ":small_blob": image,
-                    })?;
-                }
-                ImageSize::Medium => {
-                    // TODO - write medium blob
-                    unimplemented!("Medium blob not implemented")
-                }
-                ImageSize::Large => {
-                    let mut stmt = conn.prepare(WRITE_LARGE_IMAGE_BLOB)?;
-                    stmt.execute(named_params! {
-                        ":card_id": id,
-                        ":large_blob": image,
-                    })?;
-                }
-            }
-            Ok(())
-        })
-        .await
-        .map_err(|_| MessageError::SQLQuery)
-    }
-
     async fn get_image(id: String, url: String, size: ImageSize) -> Result<Vec<u8>, MessageError> {
-        let (conn, image) = join(Database::connection(), download_image(url)).await;
-        let conn = conn.map_err(|_| MessageError::SQLConnection)?;
-        let image = image?;
-        Self::write_card_image_blob(&conn, id, size, image.clone()).await?;
+        let image = download_image(url).await?;
+        spawn(Database::write_card_image_blob(id, size, image.clone()));
         Ok(image)
     }
 

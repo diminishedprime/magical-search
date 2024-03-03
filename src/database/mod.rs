@@ -1,6 +1,13 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, time::SystemTime};
 
-use crate::{search::Search, CARDS_PER_ROW};
+use rusqlite::named_params;
+
+use crate::{
+    card::card_data::ImageSize,
+    db::{WRITE_LARGE_IMAGE_BLOB, WRITE_SMALL_IMAGE_BLOB},
+    search::Search,
+    MessageError, CARDS_PER_ROW,
+};
 
 pub struct Database;
 
@@ -41,5 +48,44 @@ impl Database {
             })
             .await?;
         Ok(card_ids)
+    }
+
+    pub async fn write_card_image_blob(
+        id: String,
+        size: ImageSize,
+        image: Vec<u8>,
+    ) -> Result<(), DatabaseErrors> {
+        println!("Current system time: {:?}", SystemTime::now());
+        println!("Running the async work that's writing the blob in the background.");
+        let conn = Database::connection().await?;
+        let r = conn
+            .call(move |conn| {
+                match size {
+                    ImageSize::Small => {
+                        let mut stmt = conn.prepare(WRITE_SMALL_IMAGE_BLOB)?;
+                        stmt.execute(named_params! {
+                            ":card_id": id,
+                            ":small_blob": image,
+                        })?;
+                    }
+                    ImageSize::Medium => {
+                        // TODO - write medium blob
+                        unimplemented!("Medium blob not implemented")
+                    }
+                    ImageSize::Large => {
+                        let mut stmt = conn.prepare(WRITE_LARGE_IMAGE_BLOB)?;
+                        stmt.execute(named_params! {
+                            ":card_id": id,
+                            ":large_blob": image,
+                        })?;
+                    }
+                }
+                Ok(())
+            })
+            .await
+            .map_err(|_| MessageError::SQLQuery)?;
+        println!("Current system time: {:?}", SystemTime::now());
+        println!("Fully finished writing the blob in the background.");
+        Ok(r)
     }
 }
