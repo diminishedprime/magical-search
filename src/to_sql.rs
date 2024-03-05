@@ -3,7 +3,8 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::search::{
-    ColorQuery, Comparison, ComparisonOperator, Name, PowerQuery, Search, SearchKeyword,
+    type_line_query::TypeLineQuery, ColorQuery, Comparison, ComparisonOperator, Name, PowerQuery,
+    Search, SearchKeyword,
 };
 
 pub trait ToSql {
@@ -142,6 +143,7 @@ impl ToSql for SearchKeyword {
             SearchKeyword::Color(color) => color.to_sql(),
             SearchKeyword::Power(power) => power.to_sql(),
             SearchKeyword::Name(name) => name.to_sql(),
+            SearchKeyword::TypeLine(type_line) => type_line.to_sql(),
         }
     }
 }
@@ -161,6 +163,17 @@ impl ToSql for Search {
                 .collect::<Vec<_>>()
                 .join(" OR "),
         }
+    }
+}
+
+impl ToSql for TypeLineQuery {
+    fn to_sql(&self) -> String {
+        // TODO - I need to clean up this whole thing since this allows for the
+        // potential of sql injection. Instead of returning String, I need to
+        // return some sort of IntoClause trait or something similar that can
+        // include the information on any parameters that need to be passed in.
+        let clauses = format!("cards.type_line LIKE '%{}%'", self.comparison);
+        format!("({clauses})", clauses = clauses)
     }
 }
 

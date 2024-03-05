@@ -8,6 +8,7 @@ use super::{
     color_query::{color_query, ColorQuery},
     name,
     power_query::{power_query, PowerQuery},
+    type_line_query::{type_line_query, TypeLineQuery},
     Name,
 };
 
@@ -16,6 +17,7 @@ pub enum SearchKeyword {
     Color(ColorQuery),
     Power(PowerQuery),
     Name(Name),
+    TypeLine(TypeLineQuery),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -29,6 +31,8 @@ pub fn search_keyword(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
     alt((
         color_query.map(Search::color),
         power_query.map(Search::power),
+        type_line_query.map(Search::type_line),
+        // Name must be the last parser since it's a bit of a catch-all.
         name.map(Search::name),
     ))
     .parse(input)
@@ -77,14 +81,17 @@ impl Search {
             Self::Or(searches)
         }
     }
-    fn color(color: ColorQuery) -> Self {
+    pub fn color(color: ColorQuery) -> Self {
         Self::Keyword(SearchKeyword::Color(color))
     }
-    fn power(power: PowerQuery) -> Self {
+    pub fn power(power: PowerQuery) -> Self {
         Self::Keyword(SearchKeyword::Power(power))
     }
-    fn name(name: Name) -> Self {
+    pub fn name(name: Name) -> Self {
         Self::Keyword(SearchKeyword::Name(name))
+    }
+    pub fn type_line(type_line: TypeLineQuery) -> Self {
+        Self::Keyword(SearchKeyword::TypeLine(type_line))
     }
 }
 

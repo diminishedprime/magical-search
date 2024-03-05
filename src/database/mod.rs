@@ -31,10 +31,11 @@ impl Database {
     ) -> Result<Vec<String>, anyhow::Error> {
         let conn = Database::connection().await?;
         conn.call(move |conn| {
-            let mut stmt = conn.prepare(&format!(
+            let sql = format!(
                 include_str!("get_ids_with_clauses.sql"),
                 clauses = search.to_clauses()
-            ))?;
+            );
+            let mut stmt = conn.prepare(&sql)?;
             let card_ids = stmt
                 .query_map(&[(":cursor", &cursor), (":limit", &CARDS_PER_ROW)], |row| {
                     let id: String = row.get(0)?;

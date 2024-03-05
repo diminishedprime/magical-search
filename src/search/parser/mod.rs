@@ -1,9 +1,10 @@
-mod color;
-mod color_query;
-mod comparison_operator;
-mod name;
-mod power_query;
+pub(crate) mod color;
+pub(crate) mod color_query;
+pub(crate) mod comparison_operator;
+pub(crate) mod name;
+pub(crate) mod power_query;
 pub(crate) mod search_keyword;
+pub(crate) mod type_line_query;
 
 use nom_supreme::{error::ErrorTree, final_parser::final_parser};
 
@@ -13,6 +14,34 @@ pub use self::{
 
 pub fn search(input: &str) -> Result<Search, ErrorTree<&str>> {
     final_parser(search_keyword::search)(input)
+}
+
+#[cfg(test)]
+mod test {
+    use super::{color::Color, type_line_query::TypeLineQuery, *};
+
+    #[test]
+    fn basic_commander_search() {
+        let input = "c:esper pow<3 t:creature";
+        let expected = Search::and(vec![
+            Search::color(ColorQuery {
+                operator: ComparisonOperator::GreaterThanOrEqual,
+                comparison: Color::Esper,
+                is_negated: false,
+            }),
+            Search::power(PowerQuery {
+                operator: ComparisonOperator::LessThan,
+                comparison: Comparison::Number("3".to_string()),
+                is_negated: false,
+            }),
+            Search::type_line(TypeLineQuery {
+                comparison: "creature".to_string(),
+                is_negated: false,
+            }),
+        ]);
+        let actual = search(input).unwrap();
+        assert_eq!(actual, expected);
+    }
 }
 
 // and cards that are a certain color identity using the id: or identity:

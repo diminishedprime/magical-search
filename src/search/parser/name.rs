@@ -19,17 +19,21 @@ impl Name {
     }
 }
 
+pub fn quoted_or_until_space(input: &str) -> IResult<&str, &str, ErrorTree<&str>> {
+    alt((
+        delimited(tag("'"), take_while(|c| c != '\''), tag("'")),
+        delimited(tag("\""), take_while(|c| c != '"'), tag("\"")),
+        take_while(|c| c != ' '),
+    ))
+    .parse(input)
+}
+
 pub fn name(input: &str) -> IResult<&str, Name, ErrorTree<&str>> {
     alt((tag_no_case("or"), tag_no_case("and")))
         .not()
         .peek()
         .parse(input)?;
-    alt((
-        delimited(tag("'"), take_while(|c| c != '\''), tag("'")).map(Name::text),
-        delimited(tag("\""), take_while(|c| c != '"'), tag("\"")).map(Name::text),
-        take_while(|c| c != ' ').map(Name::text),
-    ))
-    .parse(input)
+    quoted_or_until_space.map(Name::text).parse(input)
 }
 
 #[cfg(test)]

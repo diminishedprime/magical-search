@@ -45,6 +45,7 @@ pub fn comparison_operator(input: &str) -> IResult<&str, ComparisonOperator, Err
         tag("<=").value(ComparisonOperator::LessThanOrEqual),
         tag(">=").value(ComparisonOperator::GreaterThanOrEqual),
         tag("<").value(ComparisonOperator::LessThan),
+        // TODO - I should create a separate comparison_operator for colon
         tag(":").value(ComparisonOperator::GreaterThanOrEqual),
         tag("=").value(ComparisonOperator::Equal),
         tag(">").value(ComparisonOperator::GreaterThan),

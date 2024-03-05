@@ -59,6 +59,7 @@ fn add_base_card(tx: &mut Transaction, card: &Card) -> Result<()> {
         ":B": card.is_black(),
         ":R": card.is_red(),
         ":G": card.is_green(),
+        ":type_line": card.type_line,
         },
     )?;
     Ok(())

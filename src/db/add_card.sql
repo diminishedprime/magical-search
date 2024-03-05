@@ -24,7 +24,8 @@ INSERT OR REPLACE INTO cards (
     U,
     B,
     R,
-    G
+    G,
+    type_line
 ) VALUES (
     :id,
     :name,
@@ -51,5 +52,6 @@ INSERT OR REPLACE INTO cards (
     :U,
     :B,
     :R,
-    :G
+    :G,
+    :type_line
 )
