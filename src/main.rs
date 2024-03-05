@@ -19,7 +19,7 @@ use iced::{
     },
     Alignment, Application, Command, Length, Rectangle, Settings, Theme,
 };
-use search::ParsedSearch;
+use search::{ParsedSearch, Search};
 use thiserror::Error;
 
 use crate::card_detail::CardDetail;
@@ -45,7 +45,7 @@ enum MagicalSearch {
 
 #[derive(Debug, Clone)]
 struct AppState {
-    search: String,
+    search: Search,
     current_cards: Cards,
     selected_card_detail: Option<CardDetail>,
 }
@@ -111,7 +111,7 @@ impl Application for MagicalSearch {
                     commands.extend(iter::once(command));
                     *self = MagicalSearch::Loaded {
                         state: AppState {
-                            search: INITIAL_SEARCH.to_string(),
+                            search: Search::from(INITIAL_SEARCH),
                             current_cards: Cards::new(new_cards.collect()),
                             selected_card_detail: None,
                         },
@@ -122,11 +122,10 @@ impl Application for MagicalSearch {
             },
             MagicalSearch::Loaded { state } => match message {
                 Message::SearchInputChanged(ref input) => {
-                    let search = search::search(input);
-                    state.search = input.to_string();
+                    state.search = Search::from(input.as_str());
                     state.current_cards.clear();
-                    if let Ok(search) = search {
-                        Cards::initial_rows_for(search)
+                    if let Some(search) = &state.search.parsed_search {
+                        Cards::initial_rows_for(search.clone())
                     } else if input == "" {
                         Cards::initial_rows_for(ParsedSearch::default())
                     } else {
@@ -225,8 +224,11 @@ impl Application for MagicalSearch {
                 Message::EndOfCardsGridVisible(rect) => {
                     if rect.is_some() {
                         let cursor = state.current_cards.cursor.clone();
-                        let search =
-                            search::search(&state.search).unwrap_or(ParsedSearch::default());
+                        let search = state
+                            .search
+                            .parsed_search
+                            .clone()
+                            .unwrap_or(ParsedSearch::default());
                         Command::perform(Cards::next_row(cursor, search), Message::LoadRow)
                     } else {
                         Command::none()
@@ -248,7 +250,7 @@ impl Application for MagicalSearch {
                     let visible_check =
                         Container::new(text("End of the line")).id(SCROLLABLE_CONTAINER.clone());
                     let cards = state.current_cards.view();
-                    let text_input = TextInput::new("Search", &state.search)
+                    let text_input = TextInput::new("Search", &state.search.input_text)
                         .on_input(|input| Message::SearchInputChanged(input));
                     column![text_input, cards, visible_check]
                         .align_items(Alignment::Center)

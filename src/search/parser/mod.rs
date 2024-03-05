@@ -16,6 +16,21 @@ pub fn search(input: &str) -> Result<ParsedSearch, ErrorTree<&str>> {
     final_parser(search_keyword::search)(input)
 }
 
+#[derive(Debug, Clone)]
+pub struct Search {
+    pub parsed_search: Option<ParsedSearch>,
+    pub input_text: String,
+}
+
+impl From<&str> for Search {
+    fn from(input_text: &str) -> Self {
+        Self {
+            parsed_search: search(&input_text).ok(),
+            input_text: input_text.to_string(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::{color::Color, type_line_query::TypeLineQuery, *};
