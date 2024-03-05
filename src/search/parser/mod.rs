@@ -1,3 +1,4 @@
+pub(crate) mod and;
 pub(crate) mod color;
 pub(crate) mod color_query;
 pub(crate) mod comparison_operator;
@@ -38,22 +39,75 @@ mod test {
     #[test]
     fn basic_commander_search() {
         let input = "c:esper pow<3 t:creature";
-        let expected = ParsedSearch::and(vec![
-            ParsedSearch::color(ColorQuery {
-                operator: ComparisonOperator::GreaterThanOrEqual,
-                comparison: Color::Esper,
-                is_negated: false,
-            }),
-            ParsedSearch::power(PowerQuery {
-                operator: ComparisonOperator::LessThan,
-                comparison: Comparison::Number("3".to_string()),
-                is_negated: false,
-            }),
-            ParsedSearch::type_line(TypeLineQuery {
-                comparison: "creature".to_string(),
-                is_negated: false,
-            }),
-        ]);
+        let expected = ParsedSearch::and(
+            vec![
+                ParsedSearch::color(ColorQuery {
+                    operator: ComparisonOperator::GreaterThanOrEqual,
+                    comparison: Color::Esper,
+                    is_negated: false,
+                }),
+                ParsedSearch::power(PowerQuery {
+                    operator: ComparisonOperator::LessThan,
+                    comparison: Comparison::Number("3".to_string()),
+                    is_negated: false,
+                }),
+                ParsedSearch::type_line(TypeLineQuery {
+                    comparison: "creature".to_string(),
+                    is_negated: false,
+                }),
+            ],
+            false,
+        );
+        let actual = search(input).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    pub fn top_level_parens_and() {
+        let input = "(c:esper pow<3)";
+        let expected = ParsedSearch::and(
+            vec![
+                ParsedSearch::color(ColorQuery {
+                    operator: ComparisonOperator::GreaterThanOrEqual,
+                    comparison: Color::Esper,
+                    is_negated: false,
+                }),
+                ParsedSearch::power(PowerQuery {
+                    operator: ComparisonOperator::LessThan,
+                    comparison: Comparison::Number("3".to_string()),
+                    is_negated: false,
+                }),
+            ],
+            false,
+        );
+        let actual = search(input).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    pub fn top_level_parens_one_name() {
+        let input = "(sliver)";
+        let expected = ParsedSearch::and(
+            vec![
+                ParsedSearch::name(Name::text("sliver")),
+                ParsedSearch::name(Name::text("queen")),
+            ],
+            false,
+        );
+        let actual = search(input).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    pub fn top_level_parens_two_names() {
+        let input = "(sliver queen)";
+        let expected = ParsedSearch::and(
+            vec![
+                ParsedSearch::name(Name::text("sliver")),
+                ParsedSearch::name(Name::text("queen")),
+            ],
+            false,
+        );
         let actual = search(input).unwrap();
         assert_eq!(actual, expected);
     }
