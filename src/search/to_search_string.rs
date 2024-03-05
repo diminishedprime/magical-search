@@ -1,4 +1,4 @@
-use super::{color::Color, ColorQuery, ParsedSearch, Search};
+use super::{color::Color, ColorComparison, ColorQuery, ParsedSearch};
 
 trait ToSearchString {
     fn to_search_string(&self) -> String;
@@ -16,14 +16,7 @@ impl ToSearchString for ParsedSearch {
                     format!(
                         "{negated}color{operator}{comparison}",
                         negated = if *is_negated { "-" } else { "" },
-                        operator = match operator {
-                            crate::search::ComparisonOperator::LessThan => "<",
-                            crate::search::ComparisonOperator::LessThanOrEqual => "<=",
-                            crate::search::ComparisonOperator::NotEqual => "!=",
-                            crate::search::ComparisonOperator::Equal => "=",
-                            crate::search::ComparisonOperator::GreaterThan => ">",
-                            crate::search::ComparisonOperator::GreaterThanOrEqual => ">=",
-                        },
+                        operator = operator.to_search_string(),
                         comparison = comparison.to_search_string()
                     )
                 }
@@ -34,6 +27,21 @@ impl ToSearchString for ParsedSearch {
             ParsedSearch::And(_) => todo!(),
             ParsedSearch::Or(_) => todo!(),
         }
+    }
+}
+
+impl ToSearchString for ColorComparison {
+    fn to_search_string(&self) -> String {
+        match self {
+            ColorComparison::LessThan => "<",
+            ColorComparison::LessThanOrEqual => "<=",
+            ColorComparison::NotEqual => "!=",
+            ColorComparison::Colon => ":",
+            ColorComparison::Equal => "=",
+            ColorComparison::GreaterThan => ">",
+            ColorComparison::GreaterThanOrEqual => ">=",
+        }
+        .to_string()
     }
 }
 

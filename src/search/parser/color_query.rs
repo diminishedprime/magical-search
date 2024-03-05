@@ -5,27 +5,48 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
-use nom_supreme::error::ErrorTree;
+use nom_supreme::{error::ErrorTree, ParserExt};
 
-use super::{
-    color::{color, Color},
-    comparison_operator::{comparison_operator, ComparisonOperator},
-};
+use super::color::{color, Color};
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ColorComparison {
+    LessThan,
+    LessThanOrEqual,
+    NotEqual,
+    Colon,
+    Equal,
+    GreaterThan,
+    GreaterThanOrEqual,
+}
 
 // Colors and Color Identity
 // You can find cards that are a certain color using the c: or color: keyword,
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ColorQuery {
-    pub operator: ComparisonOperator,
+    pub operator: ColorComparison,
     pub comparison: Color,
     pub is_negated: bool,
+}
+
+fn color_comparison(input: &str) -> IResult<&str, ColorComparison, ErrorTree<&str>> {
+    alt((
+        tag("!=").value(ColorComparison::NotEqual),
+        tag("<=").value(ColorComparison::LessThanOrEqual),
+        tag(">=").value(ColorComparison::GreaterThanOrEqual),
+        tag("<").value(ColorComparison::LessThan),
+        tag(":").value(ColorComparison::Colon),
+        tag("=").value(ColorComparison::Equal),
+        tag(">").value(ColorComparison::GreaterThan),
+    ))
+    .parse(input)
 }
 
 pub fn color_query(input: &str) -> IResult<&str, ColorQuery, ErrorTree<&str>> {
     tuple((
         opt(tag("-")),
         alt((tag_no_case("color"), tag_no_case("c"))),
-        comparison_operator,
+        color_comparison,
         color,
     ))
     .map(|(negate, _color_tag, operator, comparison)| ColorQuery {
@@ -48,7 +69,7 @@ mod tests {
                 is_negated: !self.is_negated,
             }
         }
-        pub fn new(operator: ComparisonOperator, color: Color) -> Self {
+        pub fn new(operator: ColorComparison, color: Color) -> Self {
             Self {
                 operator,
                 comparison: color,
@@ -62,7 +83,7 @@ mod tests {
         let (_, actual) = color_query("c<red").unwrap();
         assert_eq!(
             actual,
-            ColorQuery::new(ComparisonOperator::LessThan, Color::Red)
+            ColorQuery::new(ColorComparison::LessThan, Color::Red)
         );
     }
 
@@ -71,7 +92,7 @@ mod tests {
         let (_, actual) = color_query("color<=green").unwrap();
         assert_eq!(
             actual,
-            ColorQuery::new(ComparisonOperator::LessThanOrEqual, Color::Green)
+            ColorQuery::new(ColorComparison::LessThanOrEqual, Color::Green)
         );
     }
 
@@ -80,17 +101,14 @@ mod tests {
         let (_, actual) = color_query("color:green").unwrap();
         assert_eq!(
             actual,
-            ColorQuery::new(ComparisonOperator::GreaterThanOrEqual, Color::Green)
+            ColorQuery::new(ColorComparison::Colon, Color::Green)
         );
     }
 
     #[test]
     fn test_color_query_is_blue() {
         let (_, actual) = color_query("c=blue").unwrap();
-        assert_eq!(
-            actual,
-            ColorQuery::new(ComparisonOperator::Equal, Color::Blue)
-        );
+        assert_eq!(actual, ColorQuery::new(ColorComparison::Equal, Color::Blue));
     }
 
     #[test]
@@ -98,7 +116,7 @@ mod tests {
         let (_, actual) = color_query("color>black").unwrap();
         assert_eq!(
             actual,
-            ColorQuery::new(ComparisonOperator::GreaterThan, Color::Black)
+            ColorQuery::new(ColorComparison::GreaterThan, Color::Black)
         );
     }
 
@@ -107,7 +125,7 @@ mod tests {
         let (_, actual) = color_query("c>=white").unwrap();
         assert_eq!(
             actual,
-            ColorQuery::new(ComparisonOperator::GreaterThanOrEqual, Color::White)
+            ColorQuery::new(ColorComparison::GreaterThanOrEqual, Color::White)
         );
     }
 
@@ -116,7 +134,7 @@ mod tests {
         let (_, actual) = color_query("-c>=white").unwrap();
         assert_eq!(
             actual,
-            ColorQuery::new(ComparisonOperator::GreaterThanOrEqual, Color::White).not()
+            ColorQuery::new(ColorComparison::GreaterThanOrEqual, Color::White).not()
         );
     }
 }

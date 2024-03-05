@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::search::{
-    and::And, type_line_query::TypeLineQuery, ColorQuery, Comparison, ComparisonOperator, Name,
+    and::And, type_line_query::TypeLineQuery, ColorComparison, ColorQuery, Comparison, Name,
     ParsedSearch, PowerQuery, SearchKeyword,
 };
 
@@ -32,16 +32,11 @@ impl ToSql for PowerQuery {
 
 impl ToSql for ColorQuery {
     fn to_sql(&self) -> String {
-        let operator = if self.is_negated {
-            self.operator.negate()
-        } else {
-            self.operator.clone()
-        };
         let all_colors = ["W", "U", "B", "R", "G"].iter().map(|s| s.to_string());
         let all_colors_set: HashSet<String> = HashSet::from_iter(all_colors.clone());
         let colors = HashSet::from_iter(self.comparison.as_set());
-        let clauses = match operator {
-            ComparisonOperator::LessThan => {
+        let clauses = match self.operator {
+            ColorComparison::LessThan => {
                 let positive = colors
                     .iter()
                     .sorted()
@@ -68,7 +63,8 @@ impl ToSql for ColorQuery {
                     negative = negative
                 )
             }
-            ComparisonOperator::LessThanOrEqual => {
+            // TODO - check this, not positive.
+            ColorComparison::LessThanOrEqual | ColorComparison::Colon => {
                 let positive = colors
                     .iter()
                     .sorted()
@@ -85,12 +81,12 @@ impl ToSql for ColorQuery {
                     negative = negative
                 )
             }
-            ComparisonOperator::NotEqual => colors
+            ColorComparison::NotEqual => colors
                 .iter()
                 .sorted()
                 .map(|color| format!("cards.{color}=FALSE", color = color))
                 .join(" AND "),
-            ComparisonOperator::Equal => all_colors
+            ColorComparison::Equal => all_colors
                 .sorted()
                 .map(|color| {
                     if colors.contains(&color) {
@@ -100,7 +96,7 @@ impl ToSql for ColorQuery {
                     }
                 })
                 .join(" AND "),
-            ComparisonOperator::GreaterThan => {
+            ColorComparison::GreaterThan => {
                 let at_least = colors
                     .iter()
                     .sorted()
@@ -117,7 +113,7 @@ impl ToSql for ColorQuery {
                     others = others
                 )
             }
-            ComparisonOperator::GreaterThanOrEqual => {
+            ColorComparison::GreaterThanOrEqual => {
                 let at_least = colors
                     .iter()
                     .sorted()
@@ -126,7 +122,11 @@ impl ToSql for ColorQuery {
                 format!("{at_least}", at_least = at_least)
             }
         };
-        format!("({clauses})", clauses = clauses)
+        format!(
+            "{negated}({clauses})",
+            clauses = clauses,
+            negated = if self.is_negated { " NOT " } else { "" }
+        )
     }
 }
 
@@ -221,14 +221,6 @@ mod tests {
     }
 
     #[test]
-    pub fn greater_or_equal_esper() {
-        let search = search::search("c:ESPER").unwrap();
-        let actual = search.to_sql();
-        let expected = "(cards.B=TRUE AND cards.U=TRUE AND cards.W=TRUE)";
-        assert_eq!(actual, expected)
-    }
-
-    #[test]
     pub fn other_greater_or_equal_esper() {
         let search = search::search("c>=ESPER").unwrap();
         let actual = search.to_sql();
@@ -239,6 +231,14 @@ mod tests {
     #[test]
     pub fn less_than_or_equal_esper() {
         let search = search::search("c<=ESPER").unwrap();
+        let actual = search.to_sql();
+        let expected = "((cards.B=TRUE OR cards.U=TRUE OR cards.W=TRUE) AND (cards.G=FALSE AND cards.R=FALSE))";
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    pub fn other_less_than_or_equal_esper() {
+        let search = search::search("c:ESPER").unwrap();
         let actual = search.to_sql();
         let expected = "((cards.B=TRUE OR cards.U=TRUE OR cards.W=TRUE) AND (cards.G=FALSE AND cards.R=FALSE))";
         assert_eq!(actual, expected)
