@@ -12,7 +12,7 @@ pub use self::{
     color_query::*, comparison_operator::*, name::*, power_query::*, search_keyword::*,
 };
 
-pub fn search(input: &str) -> Result<Search, ErrorTree<&str>> {
+pub fn search(input: &str) -> Result<ParsedSearch, ErrorTree<&str>> {
     final_parser(search_keyword::search)(input)
 }
 
@@ -23,18 +23,18 @@ mod test {
     #[test]
     fn basic_commander_search() {
         let input = "c:esper pow<3 t:creature";
-        let expected = Search::and(vec![
-            Search::color(ColorQuery {
+        let expected = ParsedSearch::and(vec![
+            ParsedSearch::color(ColorQuery {
                 operator: ComparisonOperator::GreaterThanOrEqual,
                 comparison: Color::Esper,
                 is_negated: false,
             }),
-            Search::power(PowerQuery {
+            ParsedSearch::power(PowerQuery {
                 operator: ComparisonOperator::LessThan,
                 comparison: Comparison::Number("3".to_string()),
                 is_negated: false,
             }),
-            Search::type_line(TypeLineQuery {
+            ParsedSearch::type_line(TypeLineQuery {
                 comparison: "creature".to_string(),
                 is_negated: false,
             }),

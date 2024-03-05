@@ -19,7 +19,7 @@ use iced::{
     },
     Alignment, Application, Command, Length, Rectangle, Settings, Theme,
 };
-use search::Search;
+use search::ParsedSearch;
 use thiserror::Error;
 
 use crate::card_detail::CardDetail;
@@ -87,7 +87,7 @@ impl Application for MagicalSearch {
     fn new(_flags: Self::Flags) -> (Self, iced::Command<Self::Message>) {
         (
             MagicalSearch::Loading,
-            Cards::initial_rows_for(Search::default()),
+            Cards::initial_rows_for(ParsedSearch::default()),
         )
     }
 
@@ -128,7 +128,7 @@ impl Application for MagicalSearch {
                     if let Ok(search) = search {
                         Cards::initial_rows_for(search)
                     } else if input == "" {
-                        Cards::initial_rows_for(Search::default())
+                        Cards::initial_rows_for(ParsedSearch::default())
                     } else {
                         Command::none()
                     }
@@ -225,7 +225,8 @@ impl Application for MagicalSearch {
                 Message::EndOfCardsGridVisible(rect) => {
                     if rect.is_some() {
                         let cursor = state.current_cards.cursor.clone();
-                        let search = search::search(&state.search).unwrap_or(Search::default());
+                        let search =
+                            search::search(&state.search).unwrap_or(ParsedSearch::default());
                         Command::perform(Cards::next_row(cursor, search), Message::LoadRow)
                     } else {
                         Command::none()

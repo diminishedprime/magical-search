@@ -21,47 +21,47 @@ pub enum SearchKeyword {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Search {
+pub enum ParsedSearch {
     Keyword(SearchKeyword),
-    And(Vec<Search>),
-    Or(Vec<Search>),
+    And(Vec<ParsedSearch>),
+    Or(Vec<ParsedSearch>),
 }
 
-pub fn search_keyword(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
+pub fn search_keyword(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
     alt((
-        color_query.map(Search::color),
-        power_query.map(Search::power),
-        type_line_query.map(Search::type_line),
+        color_query.map(ParsedSearch::color),
+        power_query.map(ParsedSearch::power),
+        type_line_query.map(ParsedSearch::type_line),
         // Name must be the last parser since it's a bit of a catch-all.
-        name.map(Search::name),
+        name.map(ParsedSearch::name),
     ))
     .parse(input)
 }
 
-fn and(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
+fn and(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
     separated_list1(alt((tag_no_case(" AND "), space1)), search_keyword)
-        .map(Search::and)
+        .map(ParsedSearch::and)
         .parse(input)
 }
 
-fn or(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
+fn or(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
     separated_list1(tag_no_case(" OR "), and)
-        .map(Search::or)
+        .map(ParsedSearch::or)
         .parse(input)
 }
 
-pub fn search(input: &str) -> IResult<&str, Search, ErrorTree<&str>> {
+pub fn search(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
     or.parse(input)
 }
 
-impl Default for Search {
+impl Default for ParsedSearch {
     fn default() -> Self {
         Self::and(vec![])
     }
 }
 
-impl Search {
-    pub fn and(searches: Vec<Search>) -> Self {
+impl ParsedSearch {
+    pub fn and(searches: Vec<ParsedSearch>) -> Self {
         if searches.len() == 1 {
             searches
                 .into_iter()
@@ -71,7 +71,7 @@ impl Search {
             Self::And(searches)
         }
     }
-    fn or(searches: Vec<Search>) -> Self {
+    fn or(searches: Vec<ParsedSearch>) -> Self {
         if searches.len() == 1 {
             searches
                 .into_iter()
@@ -100,7 +100,7 @@ mod tests {
     use super::*;
     use crate::search::parser::{color::Color, comparison_operator::ComparisonOperator};
 
-    impl Search {
+    impl ParsedSearch {
         fn leaf(keyword: SearchKeyword) -> Self {
             Self::Keyword(keyword)
         }
@@ -112,7 +112,7 @@ mod tests {
         let (_, actual) = search(input).unwrap();
         assert_eq!(
             actual,
-            Search::leaf(SearchKeyword::Color(ColorQuery::new(
+            ParsedSearch::leaf(SearchKeyword::Color(ColorQuery::new(
                 ComparisonOperator::GreaterThanOrEqual,
                 Color::Red
             )))
@@ -125,16 +125,16 @@ mod tests {
         let (_, actual) = search(input).unwrap();
         assert_eq!(
             actual,
-            Search::and(vec![
-                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+            ParsedSearch::and(vec![
+                ParsedSearch::leaf(SearchKeyword::Color(ColorQuery::new(
                     ComparisonOperator::Equal,
                     Color::Red
                 ))),
-                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                ParsedSearch::leaf(SearchKeyword::Color(ColorQuery::new(
                     ComparisonOperator::Equal,
                     Color::Blue
                 ))),
-                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                ParsedSearch::leaf(SearchKeyword::Color(ColorQuery::new(
                     ComparisonOperator::Equal,
                     Color::Green
                 )))
@@ -148,16 +148,16 @@ mod tests {
         let (_, actual) = search(input).unwrap();
         assert_eq!(
             actual,
-            Search::and(vec![
-                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+            ParsedSearch::and(vec![
+                ParsedSearch::leaf(SearchKeyword::Color(ColorQuery::new(
                     ComparisonOperator::Equal,
                     Color::Red
                 ))),
-                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                ParsedSearch::leaf(SearchKeyword::Color(ColorQuery::new(
                     ComparisonOperator::Equal,
                     Color::Blue
                 ))),
-                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                ParsedSearch::leaf(SearchKeyword::Color(ColorQuery::new(
                     ComparisonOperator::Equal,
                     Color::Green
                 )))
@@ -171,16 +171,16 @@ mod tests {
         let (_, actual) = search(input).unwrap();
         assert_eq!(
             actual,
-            Search::or(vec![
-                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+            ParsedSearch::or(vec![
+                ParsedSearch::leaf(SearchKeyword::Color(ColorQuery::new(
                     ComparisonOperator::Equal,
                     Color::Red
                 ))),
-                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                ParsedSearch::leaf(SearchKeyword::Color(ColorQuery::new(
                     ComparisonOperator::Equal,
                     Color::Blue
                 ))),
-                Search::leaf(SearchKeyword::Color(ColorQuery::new(
+                ParsedSearch::leaf(SearchKeyword::Color(ColorQuery::new(
                     ComparisonOperator::Equal,
                     Color::Green
                 )))
