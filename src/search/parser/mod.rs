@@ -1,9 +1,6 @@
-pub(crate) mod and;
 pub(crate) mod color;
 pub(crate) mod color_query;
 pub(crate) mod name;
-pub(crate) mod or;
-pub(crate) mod parens;
 pub(crate) mod parsed_search;
 pub(crate) mod power_query;
 pub(crate) mod search_keyword;
@@ -54,25 +51,22 @@ mod test {
     #[test]
     fn basic_commander_search() {
         let input = "c>=esper pow<3 t:creature";
-        let expected = ParsedSearch::and(
-            vec![
-                ParsedSearch::color_query(ColorQuery {
-                    operator: ColorOperator::GreaterThanOrEqual,
-                    operand: ColorOperand::Esper,
-                    negated: false,
-                }),
-                ParsedSearch::power_query(PowerQuery {
-                    operator: PowerOperator::LessThan,
-                    operand: PowerOperand::Number("3".to_string()),
-                    negated: false,
-                }),
-                ParsedSearch::type_line(TypeLineQuery {
-                    operand: "creature".to_string(),
-                    negated: false,
-                }),
-            ],
-            false,
-        );
+        let expected = ParsedSearch::And(vec![
+            ParsedSearch::color_query(ColorQuery {
+                operator: ColorOperator::GreaterThanOrEqual,
+                operand: ColorOperand::Esper,
+                negated: false,
+            }),
+            ParsedSearch::power_query(PowerQuery {
+                operator: PowerOperator::LessThan,
+                operand: PowerOperand::Number("3".to_string()),
+                negated: false,
+            }),
+            ParsedSearch::type_line(TypeLineQuery {
+                operand: "creature".to_string(),
+                negated: false,
+            }),
+        ]);
         let actual = search(input).unwrap();
         assert_eq!(actual, expected);
     }

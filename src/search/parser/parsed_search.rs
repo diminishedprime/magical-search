@@ -1,67 +1,82 @@
-use nom::{branch::alt, IResult, Parser};
-use nom_supreme::error::ErrorTree;
-
-use super::{
-    and::And,
-    or::{or, Or},
-    parens::{parens, Parens},
+use nom::{
+    branch::alt,
+    bytes::complete::tag_no_case,
+    character::complete::space1,
+    multi::separated_list0,
+    sequence::{delimited, tuple},
+    IResult, Parser,
 };
-use crate::search::{search_keyword, SearchKeyword};
+use nom_supreme::{error::ErrorTree, tag::complete::tag, ParserExt};
+
+use crate::search::{
+    color_query, name, power_query, type_line_query::type_line_query, SearchKeyword,
+};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ParsedSearch {
+    Or(Vec<ParsedSearch>),
+    And(Vec<ParsedSearch>),
+    Negated(bool, Box<ParsedSearch>),
     Keyword(SearchKeyword),
-    And(And),
-    Or(Or),
-    Parens(Parens),
-}
-
-impl ParsedSearch {
-    pub fn negated(mut self, negated: bool) -> Self {
-        match &mut self {
-            ParsedSearch::Keyword(ref mut kw) => match kw {
-                SearchKeyword::ColorQuery(ref mut cq) => cq.negated = negated,
-                SearchKeyword::PowerQuery(ref mut pq) => pq.negated = negated,
-                SearchKeyword::Name(ref mut name) => name.negated = negated,
-                SearchKeyword::TypeLineQuery(ref mut tlq) => tlq.negated = negated,
-            },
-            ParsedSearch::And(ref mut and) => and.negated = negated,
-            ParsedSearch::Or(ref mut or) => or.negated = negated,
-            ParsedSearch::Parens(ref mut parens) => parens.negated = negated,
-        }
-        self
-    }
 }
 
 pub fn parsed_search(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
-    alt((parens, or, search_keyword)).parse(input)
+    or.parse(input)
+}
+
+fn or(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
+    separated_list0(alt((tag_no_case(" OR "), space1)), and)
+        .map(ParsedSearch::Or)
+        .parse(input)
+}
+
+fn and(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
+    separated_list0(alt((tag_no_case(" AND "), space1)), negated)
+        .map(ParsedSearch::And)
+        .parse(input)
+}
+
+fn negated(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
+    tuple((
+        tag("-").opt(),
+        alt((delimited(tag("("), parsed_search, tag(")")), search_keyword)),
+    ))
+    .map(|(negated, operand)| ParsedSearch::Negated(negated.is_some(), Box::new(operand)))
+    .parse(input)
+}
+
+fn search_keyword(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
+    alt((
+        color_query,
+        power_query,
+        type_line_query,
+        // Name must be the last parser since it's a bit of a catch-all.
+        name,
+    ))
+    .parse(input)
 }
 
 #[cfg(test)]
 mod tests {
     use crate::search::{
         color::ColorOperand::Red, parsed_search::parsed_search, ColorOperator::Colon, ColorQuery,
-        Name, ParsedSearch,
+        ParsedSearch,
     };
 
     #[test]
     fn test_keyword_wrapped_in_parens() {
         let input = "(hello)";
         let (_, actual) = parsed_search(input).unwrap();
-        assert_eq!(
-            actual,
-            ParsedSearch::parens(ParsedSearch::name(Name::text("hello", false)), false)
-        );
+        let expected = ParsedSearch::name("hello");
+        assert_eq!(actual, expected);
     }
 
     #[test]
     fn test_negated_keyword_wrapped_in_parens() {
         let input = "(-hello)";
         let (_, actual) = parsed_search(input).unwrap();
-        assert_eq!(
-            actual,
-            ParsedSearch::parens(ParsedSearch::name(Name::text("hello", true)), false)
-        );
+        let expected = ParsedSearch::name("hello");
+        assert_eq!(actual, expected);
     }
 
     #[test]

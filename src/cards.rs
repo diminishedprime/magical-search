@@ -4,12 +4,7 @@ use iced::{
 };
 use itertools::Itertools;
 
-use crate::{
-    card::Card,
-    database::Database,
-    search::{ParsedSearch, Search},
-    Message, MessageError, CARDS_PER_ROW,
-};
+use crate::{card::Card, database::Database, search::Search, Message, MessageError, CARDS_PER_ROW};
 
 #[derive(Debug, Clone)]
 pub struct Cards {

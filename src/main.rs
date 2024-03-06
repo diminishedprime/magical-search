@@ -19,7 +19,7 @@ use iced::{
     },
     Alignment, Application, Command, Length, Rectangle, Settings, Theme,
 };
-use search::{ParsedSearch, Search};
+use search::Search;
 use thiserror::Error;
 
 use crate::card_detail::CardDetail;

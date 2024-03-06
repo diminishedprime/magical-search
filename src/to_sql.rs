@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::search::{
-    and::And, or::Or, parens::Parens, type_line_query::TypeLineQuery, ColorOperator, ColorQuery,
-    Name, ParsedSearch, PowerOperand, PowerOperator, PowerQuery, SearchKeyword,
+    type_line_query::TypeLineQuery, ColorOperator, ColorQuery, Name, ParsedSearch, PowerOperand,
+    PowerOperator, PowerQuery, SearchKeyword,
 };
 
 pub trait ToSql {
@@ -174,36 +174,22 @@ impl ToSql for ParsedSearch {
     fn to_sql(&self) -> String {
         match self {
             ParsedSearch::Keyword(keyword) => keyword.to_sql(),
-            ParsedSearch::And(And {
-                operands: items,
-                negated,
-            })
-            | ParsedSearch::Or(Or {
-                operands: items,
-                negated,
-            }) => {
-                let queries = items
-                    .iter()
-                    .map(|query| query.to_sql())
-                    .collect::<Vec<_>>()
-                    .join(&format!(
-                        " {} ",
-                        if matches!(self, ParsedSearch::And(_)) {
-                            "AND"
-                        } else {
-                            "OR"
-                        }
-                    ));
-                format!(
-                    "{negated}({queries})",
-                    queries = queries,
-                    negated = if *negated { " NOT " } else { "" }
-                )
-            }
-            ParsedSearch::Parens(Parens { operand, negated }) => format!(
-                "{negated}({operand})",
-                operand = operand.to_sql(),
-                negated = if *negated { " NOT " } else { "" }
+            ParsedSearch::And(operands) | ParsedSearch::Or(operands) => operands
+                .iter()
+                .map(|query| query.to_sql())
+                .collect::<Vec<_>>()
+                .join(&format!(
+                    " {} ",
+                    if matches!(self, ParsedSearch::And(_)) {
+                        "AND"
+                    } else {
+                        "OR"
+                    }
+                )),
+            ParsedSearch::Negated(negated, search) => format!(
+                "{negated}({search})",
+                negated = if *negated { "NOT " } else { "" },
+                search = search.to_sql()
             ),
         }
     }

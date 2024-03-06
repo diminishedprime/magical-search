@@ -1,4 +1,4 @@
-use super::{color::ColorOperand, ColorOperator, ColorQuery, ParsedSearch};
+use super::{color::ColorOperand, ColorOperator, ParsedSearch};
 
 trait ToSearchString {
     fn to_search_string(&self) -> String;
@@ -6,28 +6,28 @@ trait ToSearchString {
 
 impl ToSearchString for ParsedSearch {
     fn to_search_string(&self) -> String {
-        match self {
-            ParsedSearch::Keyword(kw) => match kw {
-                super::SearchKeyword::ColorQuery(ColorQuery {
-                    negated: is_negated,
-                    operator,
-                    operand: comparison,
-                }) => {
-                    format!(
-                        "{negated}color{operator}{comparison}",
-                        negated = if *is_negated { "-" } else { "" },
-                        operator = operator.to_search_string(),
-                        comparison = comparison.to_search_string()
-                    )
-                }
-                super::SearchKeyword::PowerQuery(_) => todo!(),
-                super::SearchKeyword::Name(_) => todo!(),
-                super::SearchKeyword::TypeLineQuery(_) => todo!(),
-            },
-            ParsedSearch::And(_) => todo!(),
-            ParsedSearch::Or(_) => todo!(),
-            ParsedSearch::Parens(_) => todo!(),
-        }
+        todo!()
+        // match self {
+        //     ParsedSearch::Keyword(kw) => match kw {
+        //         super::SearchKeyword::ColorQuery(ColorQuery {
+        //             negated: is_negated,
+        //             operator,
+        //             operand: comparison,
+        //         }) => {
+        //             format!(
+        //                 "{negated}color{operator}{comparison}",
+        //                 negated = if *is_negated { "-" } else { "" },
+        //                 operator = operator.to_search_string(),
+        //                 comparison = comparison.to_search_string()
+        //             )
+        //         }
+        //         super::SearchKeyword::PowerQuery(_) => todo!(),
+        //         super::SearchKeyword::Name(_) => todo!(),
+        //         super::SearchKeyword::TypeLineQuery(_) => todo!(),
+        //     },
+        //     ParsedSearch::And(_) => todo!(),
+        //     ParsedSearch::Or(_) => todo!(),
+        // }
     }
 }
 
