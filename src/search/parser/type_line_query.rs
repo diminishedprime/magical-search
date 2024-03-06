@@ -34,62 +34,62 @@ impl ParsedSearch {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     #[test]
-//     fn test_type_line_query_type() {
-//         let input = r#"type:"Creature - Goblin""#;
-//         let expected = TypeLineQuery {
-//             operand: "Creature - Goblin".to_string(),
-//             negated: false,
-//         };
-//         let (_, actual) = type_line_query(input).unwrap();
-//         assert_eq!(actual, expected);
-//     }
+    #[test]
+    fn test_type_line_query_type() {
+        let input = r#"type:"Creature - Goblin""#;
+        let expected = ParsedSearch::type_line(TypeLineQuery {
+            operand: "Creature - Goblin".to_string(),
+            negated: false,
+        });
+        let (_, actual) = type_line_query(input).unwrap();
+        assert_eq!(actual, expected);
+    }
 
-//     #[test]
-//     fn test_type_line_query_negated_type() {
-//         let input = r#"-type:"Sorcery""#;
-//         let expected = TypeLineQuery {
-//             operand: "Sorcery".to_string(),
-//             negated: true,
-//         };
-//         let (_, actual) = type_line_query(input).unwrap();
-//         assert_eq!(actual, expected);
-//     }
+    #[test]
+    fn test_type_line_query_negated_type() {
+        let input = r#"-type:"Sorcery""#;
+        let expected = ParsedSearch::type_line(TypeLineQuery {
+            operand: "Sorcery".to_string(),
+            negated: true,
+        });
+        let (_, actual) = type_line_query(input).unwrap();
+        assert_eq!(actual, expected);
+    }
 
-//     #[test]
-//     fn test_type_line_query_t() {
-//         let input = r#"t:"Land""#;
-//         let expected = TypeLineQuery {
-//             operand: "Land".to_string(),
-//             negated: false,
-//         };
-//         let (_, actual) = type_line_query(input).unwrap();
-//         assert_eq!(actual, expected);
-//     }
+    #[test]
+    fn test_type_line_query_t() {
+        let input = r#"t:"Land""#;
+        let expected = ParsedSearch::type_line(TypeLineQuery {
+            operand: "Land".to_string(),
+            negated: false,
+        });
+        let (_, actual) = type_line_query(input).unwrap();
+        assert_eq!(actual, expected);
+    }
 
-//     #[test]
-//     fn test_type_line_query_negated_t() {
-//         let input = r#"-t:"Enchantment Creature - Human""#;
-//         let expected = TypeLineQuery {
-//             operand: "Enchantment Creature - Human".to_string(),
-//             negated: true,
-//         };
-//         let (_, actual) = type_line_query(input).unwrap();
-//         assert_eq!(actual, expected);
-//     }
+    #[test]
+    fn test_type_line_query_negated_t() {
+        let input = r#"-t:"Enchantment Creature - Human""#;
+        let expected = ParsedSearch::type_line(TypeLineQuery {
+            operand: "Enchantment Creature - Human".to_string(),
+            negated: true,
+        });
+        let (_, actual) = type_line_query(input).unwrap();
+        assert_eq!(actual, expected);
+    }
 
-//     #[test]
-//     fn test_type_line_query_equals_sign() {
-//         let input = r#"type=Artifact"#;
-//         let expected = TypeLineQuery {
-//             operand: "Artifact".to_string(),
-//             negated: false,
-//         };
-//         let (_, actual) = type_line_query(input).unwrap();
-//         assert_eq!(actual, expected);
-//     }
-// }
+    #[test]
+    fn test_type_line_query_equals_sign() {
+        let input = r#"type=Artifact"#;
+        let expected = ParsedSearch::type_line(TypeLineQuery {
+            operand: "Artifact".to_string(),
+            negated: false,
+        });
+        let (_, actual) = type_line_query(input).unwrap();
+        assert_eq!(actual, expected);
+    }
+}

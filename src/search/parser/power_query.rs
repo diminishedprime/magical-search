@@ -100,58 +100,38 @@ impl ParsedSearch {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     impl PowerQuery {
-//         fn not(self) -> Self {
-//             Self {
-//                 operator: self.operator,
-//                 operand: self.operand,
-//                 negated: !self.negated,
-//             }
-//         }
-//         pub fn new(operator: PowerOperator, comparison: PowerOperand) -> Self {
-//             Self {
-//                 operator,
-//                 operand: comparison,
-//                 negated: false,
-//             }
-//         }
-//     }
+    impl PowerQuery {
+        pub fn new(operator: PowerOperator, comparison: PowerOperand) -> ParsedSearch {
+            ParsedSearch::power_query(Self {
+                operator,
+                operand: comparison,
+                negated: false,
+            })
+        }
+    }
 
-//     #[test]
-//     fn test_power_gt_3() {
-//         let (_, actual) = power_query("pow>3").unwrap();
-//         assert_eq!(
-//             actual,
-//             PowerQuery::new(
-//                 PowerOperator::GreaterThan,
-//                 PowerOperand::Number("3".to_string()),
-//             )
-//         );
-//     }
+    #[test]
+    fn test_power_gt_3() {
+        let (_, actual) = power_query("pow>3").unwrap();
+        assert_eq!(
+            actual,
+            PowerQuery::new(
+                PowerOperator::GreaterThan,
+                PowerOperand::Number("3".to_string()),
+            )
+        );
+    }
 
-//     #[test]
-//     fn test_power_toughness() {
-//         let (_, actual) = power_query("power<=toughness").unwrap();
-//         assert_eq!(
-//             actual,
-//             PowerQuery::new(PowerOperator::LessThanOrEqual, PowerOperand::Tougness,)
-//         );
-//     }
-
-//     #[test]
-//     fn test_power_negated_toughness() {
-//         let (_, actual) = power_query("-pow>2.5").unwrap();
-//         assert_eq!(
-//             actual,
-//             PowerQuery::new(
-//                 PowerOperator::GreaterThan,
-//                 PowerOperand::Number("2.5".to_string()),
-//             )
-//             .not()
-//         );
-//     }
-// }
+    #[test]
+    fn test_power_toughness() {
+        let (_, actual) = power_query("power<=toughness").unwrap();
+        assert_eq!(
+            actual,
+            PowerQuery::new(PowerOperator::LessThanOrEqual, PowerOperand::Tougness,)
+        );
+    }
+}

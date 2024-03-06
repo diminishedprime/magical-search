@@ -68,87 +68,80 @@ impl ParsedSearch {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     impl ColorQuery {
-//         fn not(self) -> Self {
-//             Self {
-//                 operator: self.operator,
-//                 operand: self.operand,
-//                 negated: !self.negated,
-//             }
-//         }
-//         pub fn new(operator: ColorOperator, color: ColorOperand) -> Self {
-//             Self {
-//                 operator,
-//                 operand: color,
-//                 negated: false,
-//             }
-//         }
-//     }
+    impl ColorQuery {
+        pub fn new(operator: ColorOperator, color: ColorOperand) -> Self {
+            Self {
+                operator,
+                operand: color,
+                negated: false,
+            }
+        }
+    }
 
-//     #[test]
-//     fn test_color_query_lt_red() {
-//         let (_, actual) = color_query("c<red").unwrap();
-//         assert_eq!(
-//             actual,
-//             ColorQuery::new(ColorOperator::LessThan, ColorOperand::Red)
-//         );
-//     }
+    #[test]
+    fn test_color_query_lt_red() {
+        let (_, actual) = color_query("c<red").unwrap();
+        assert_eq!(
+            actual,
+            ParsedSearch::color_query(ColorQuery::new(ColorOperator::LessThan, ColorOperand::Red))
+        );
+    }
 
-//     #[test]
-//     fn test_color_query_lte_green() {
-//         let (_, actual) = color_query("color<=green").unwrap();
-//         assert_eq!(
-//             actual,
-//             ColorQuery::new(ColorOperator::LessThanOrEqual, ColorOperand::Green)
-//         );
-//     }
+    #[test]
+    fn test_color_query_lte_green() {
+        let (_, actual) = color_query("color<=green").unwrap();
+        assert_eq!(
+            actual,
+            ParsedSearch::color_query(ColorQuery::new(
+                ColorOperator::LessThanOrEqual,
+                ColorOperand::Green
+            ))
+        );
+    }
 
-//     #[test]
-//     fn test_color_query_gte_green_2() {
-//         let (_, actual) = color_query("color:green").unwrap();
-//         assert_eq!(
-//             actual,
-//             ColorQuery::new(ColorOperator::Colon, ColorOperand::Green)
-//         );
-//     }
+    #[test]
+    fn test_color_query_gte_green_2() {
+        let (_, actual) = color_query("color:green").unwrap();
+        assert_eq!(
+            actual,
+            ParsedSearch::color_query(ColorQuery::new(ColorOperator::Colon, ColorOperand::Green))
+        );
+    }
 
-//     #[test]
-//     fn test_color_query_is_blue() {
-//         let (_, actual) = color_query("c=blue").unwrap();
-//         assert_eq!(
-//             actual,
-//             ColorQuery::new(ColorOperator::Equal, ColorOperand::Blue)
-//         );
-//     }
+    #[test]
+    fn test_color_query_is_blue() {
+        let (_, actual) = color_query("c=blue").unwrap();
+        assert_eq!(
+            actual,
+            ParsedSearch::color_query(ColorQuery::new(ColorOperator::Equal, ColorOperand::Blue))
+        );
+    }
 
-//     #[test]
-//     fn test_color_query_gt_black() {
-//         let (_, actual) = color_query("color>black").unwrap();
-//         assert_eq!(
-//             actual,
-//             ColorQuery::new(ColorOperator::GreaterThan, ColorOperand::Black)
-//         );
-//     }
+    #[test]
+    fn test_color_query_gt_black() {
+        let (_, actual) = color_query("color>black").unwrap();
+        assert_eq!(
+            actual,
+            ParsedSearch::color_query(ColorQuery::new(
+                ColorOperator::GreaterThan,
+                ColorOperand::Black
+            ))
+        );
+    }
 
-//     #[test]
-//     fn test_color_query_gte_white() {
-//         let (_, actual) = color_query("c>=white").unwrap();
-//         assert_eq!(
-//             actual,
-//             ColorQuery::new(ColorOperator::GreaterThanOrEqual, ColorOperand::White)
-//         );
-//     }
-
-//     #[test]
-//     fn test_color_query_not_gte_white() {
-//         let (_, actual) = color_query("-c>=white").unwrap();
-//         assert_eq!(
-//             actual,
-//             ColorQuery::new(ColorOperator::GreaterThanOrEqual, ColorOperand::White).not()
-//         );
-//     }
-// }
+    #[test]
+    fn test_color_query_gte_white() {
+        let (_, actual) = color_query("c>=white").unwrap();
+        assert_eq!(
+            actual,
+            ParsedSearch::color_query(ColorQuery::new(
+                ColorOperator::GreaterThanOrEqual,
+                ColorOperand::White
+            ))
+        );
+    }
+}
