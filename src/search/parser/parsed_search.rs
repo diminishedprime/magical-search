@@ -106,7 +106,6 @@ mod test {
             ParsedSearch::color_query(ColorQuery {
                 operand: ColorOperand::Red,
                 operator: ColorOperator::Colon,
-                negated: false,
             }),
         )));
         assert_eq!(actual, expected);
@@ -121,7 +120,6 @@ mod test {
                 ParsedSearch::color_query(ColorQuery {
                     operator: ColorOperator::GreaterThanOrEqual,
                     operand: ColorOperand::Esper,
-                    negated: false,
                 }),
             ),
             test_negated(
@@ -155,7 +153,6 @@ mod test {
                     ParsedSearch::color_query(ColorQuery {
                         operator: ColorOperator::Colon,
                         operand: ColorOperand::Esper,
-                        negated: false,
                     }),
                 ),
                 test_negated(

@@ -144,11 +144,7 @@ impl ToSql for ColorQuery {
                 format!("{at_least}", at_least = at_least)
             }
         };
-        format!(
-            "{negated}({clauses})",
-            clauses = clauses,
-            negated = if self.negated { " NOT " } else { "" }
-        )
+        format!("{clauses}", clauses = clauses)
     }
 }
 
@@ -186,13 +182,11 @@ impl ToSql for ParsedSearch {
                         "OR"
                     }
                 )),
-            ParsedSearch::Negated(negated, search) => {
-                if *negated {
-                    format!("NOT ({search})", search = search.to_sql())
-                } else {
-                    search.to_sql()
-                }
-            }
+            ParsedSearch::Negated(negated, search) => format!(
+                "{negated}({search})",
+                negated = if *negated { "NOT " } else { "" },
+                search = search.to_sql()
+            ),
         }
     }
 }
@@ -242,6 +236,14 @@ mod tests {
     }
 
     #[test]
+    pub fn not_esper_and_not_golgari() {
+        let search = search::search("c!=ESPER c!=GOLGARI").unwrap();
+        let actual = search.to_sql();
+        let expected = "(cards.B=FALSE AND cards.U=FALSE AND cards.W=FALSE) AND (cards.B=FALSE AND cards.G=FALSE)";
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     pub fn other_greater_or_equal_esper() {
         let search = search::search("c>=ESPER").unwrap();
         let actual = search.to_sql();
@@ -261,7 +263,8 @@ mod tests {
     pub fn other_less_than_or_equal_esper() {
         let search = search::search("c:ESPER").unwrap();
         let actual = search.to_sql();
-        let expected = "((cards.B=TRUE OR cards.U=TRUE OR cards.W=TRUE) AND (cards.G=FALSE AND cards.R=FALSE))";
+        let expected =
+            "((cards.B=TRUE OR cards.U=TRUE OR cards.W=TRUE) AND (cards.G=FALSE AND cards.R=FALSE))";
         assert_eq!(actual, expected)
     }
 
@@ -277,7 +280,7 @@ mod tests {
     pub fn equals_esper_and_power_equals_touhgness() {
         let search = search::search("c=ESPER pow=toughness").unwrap();
         let actual = search.to_sql();
-        let expected = "(cards.B=TRUE AND cards.G=FALSE AND cards.R=FALSE AND cards.U=TRUE AND cards.W=TRUE) AND (cards.power=cards.toughness)";
+        let expected = "(cards.B=TRUE AND cards.G=FALSE AND cards.R=FALSE AND cards.U=TRUE AND cards.W=TRUE) AND ((cards.power=cards.toughness))";
         assert_eq!(actual, expected)
     }
 }

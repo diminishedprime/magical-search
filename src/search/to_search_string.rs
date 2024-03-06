@@ -26,13 +26,8 @@ impl ToSearchString for ParsedSearch {
                 }
             }
             ParsedSearch::Keyword(kw) => match kw {
-                super::SearchKeyword::ColorQuery(ColorQuery {
-                    operator,
-                    operand,
-                    negated,
-                }) => format!(
-                    "{negated}color{operator}{operand}",
-                    negated = if *negated { "-" } else { "" },
+                super::SearchKeyword::ColorQuery(ColorQuery { operator, operand }) => format!(
+                    "color{operator}{operand}",
                     operator = operator.to_search_string(),
                     operand = operand.to_search_string()
                 ),

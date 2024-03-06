@@ -1,7 +1,6 @@
 use nom::{
     branch::alt,
     bytes::complete::{tag, tag_no_case},
-    combinator::opt,
     sequence::tuple,
     IResult, Parser,
 };
@@ -30,7 +29,6 @@ pub enum ColorOperator {
 pub struct ColorQuery {
     pub operator: ColorOperator,
     pub operand: ColorOperand,
-    pub negated: bool,
 }
 
 fn color_operator(input: &str) -> IResult<&str, ColorOperator, ErrorTree<&str>> {
@@ -48,15 +46,13 @@ fn color_operator(input: &str) -> IResult<&str, ColorOperator, ErrorTree<&str>> 
 
 pub fn color_query(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
     tuple((
-        opt(tag("-")),
         alt((tag_no_case("color"), tag_no_case("c"))),
         color_operator,
         color,
     ))
-    .map(|(negate, _color_tag, operator, comparison)| ColorQuery {
+    .map(|(_color_tag, operator, comparison)| ColorQuery {
         operator,
         operand: comparison,
-        negated: negate.is_some(),
     })
     .map(ParsedSearch::color_query)
     .parse(input)
@@ -77,7 +73,6 @@ mod tests {
             Self {
                 operator,
                 operand: color,
-                negated: false,
             }
         }
     }
