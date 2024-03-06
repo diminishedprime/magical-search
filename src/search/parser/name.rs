@@ -68,10 +68,4 @@ mod tests {
         let (_, actual) = name("name").unwrap();
         assert_eq!(actual, ParsedSearch::name("name"));
     }
-
-    #[test]
-    fn test_parse_negated_name() {
-        let (_, actual) = name("-name").unwrap();
-        assert_eq!(actual, ParsedSearch::name("name"));
-    }
 }

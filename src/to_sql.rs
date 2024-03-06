@@ -186,11 +186,13 @@ impl ToSql for ParsedSearch {
                         "OR"
                     }
                 )),
-            ParsedSearch::Negated(negated, search) => format!(
-                "{negated}({search})",
-                negated = if *negated { "NOT " } else { "" },
-                search = search.to_sql()
-            ),
+            ParsedSearch::Negated(negated, search) => {
+                if *negated {
+                    format!("NOT ({search})", search = search.to_sql())
+                } else {
+                    search.to_sql()
+                }
+            }
         }
     }
 }
@@ -275,7 +277,7 @@ mod tests {
     pub fn equals_esper_and_power_equals_touhgness() {
         let search = search::search("c=ESPER pow=toughness").unwrap();
         let actual = search.to_sql();
-        let expected = "((cards.B=TRUE AND cards.G=FALSE AND cards.R=FALSE AND cards.U=TRUE AND cards.W=TRUE) AND (cards.power=cards.toughness))";
+        let expected = "(cards.B=TRUE AND cards.G=FALSE AND cards.R=FALSE AND cards.U=TRUE AND cards.W=TRUE) AND (cards.power=cards.toughness)";
         assert_eq!(actual, expected)
     }
 }

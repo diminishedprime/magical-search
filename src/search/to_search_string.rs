@@ -1,4 +1,4 @@
-use super::{color::ColorOperand, ColorOperator, ParsedSearch};
+use super::{color::ColorOperand, ColorOperator, ColorQuery, ParsedSearch};
 
 trait ToSearchString {
     fn to_search_string(&self) -> String;
@@ -6,28 +6,41 @@ trait ToSearchString {
 
 impl ToSearchString for ParsedSearch {
     fn to_search_string(&self) -> String {
-        todo!()
-        // match self {
-        //     ParsedSearch::Keyword(kw) => match kw {
-        //         super::SearchKeyword::ColorQuery(ColorQuery {
-        //             negated: is_negated,
-        //             operator,
-        //             operand: comparison,
-        //         }) => {
-        //             format!(
-        //                 "{negated}color{operator}{comparison}",
-        //                 negated = if *is_negated { "-" } else { "" },
-        //                 operator = operator.to_search_string(),
-        //                 comparison = comparison.to_search_string()
-        //             )
-        //         }
-        //         super::SearchKeyword::PowerQuery(_) => todo!(),
-        //         super::SearchKeyword::Name(_) => todo!(),
-        //         super::SearchKeyword::TypeLineQuery(_) => todo!(),
-        //     },
-        //     ParsedSearch::And(_) => todo!(),
-        //     ParsedSearch::Or(_) => todo!(),
-        // }
+        match self {
+            ParsedSearch::Or(or) => or
+                .iter()
+                .map(|parsed_search| parsed_search.to_search_string())
+                .collect::<Vec<_>>()
+                .join(" OR "),
+            ParsedSearch::And(and) => and
+                .iter()
+                .map(|parsed_search| parsed_search.to_search_string())
+                .collect::<Vec<_>>()
+                .join(" AND "),
+            ParsedSearch::Negated(negated, parsed_search) => {
+                if *negated {
+                    // TODO - I may want to handle this more cleanly
+                    format!("-({})", parsed_search.to_search_string())
+                } else {
+                    parsed_search.to_search_string()
+                }
+            }
+            ParsedSearch::Keyword(kw) => match kw {
+                super::SearchKeyword::ColorQuery(ColorQuery {
+                    operator,
+                    operand,
+                    negated,
+                }) => format!(
+                    "{negated}color{operator}{operand}",
+                    negated = if *negated { "-" } else { "" },
+                    operator = operator.to_search_string(),
+                    operand = operand.to_search_string()
+                ),
+                super::SearchKeyword::PowerQuery(_) => todo!(),
+                super::SearchKeyword::Name(_) => todo!(),
+                super::SearchKeyword::TypeLineQuery(_) => todo!(),
+            },
+        }
     }
 }
 

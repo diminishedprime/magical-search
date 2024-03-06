@@ -57,17 +57,31 @@ fn search_keyword(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
+    use super::ParsedSearch;
     use crate::search::{
-        color::ColorOperand::Red, parsed_search::parsed_search, ColorOperator::Colon, ColorQuery,
-        ParsedSearch,
+        color::ColorOperand, parsed_search::parsed_search, type_line_query::TypeLineQuery,
+        ColorOperator, ColorQuery, PowerOperand, PowerOperator, PowerQuery,
     };
+
+    fn test_or(inside: ParsedSearch) -> ParsedSearch {
+        ParsedSearch::Or(vec![inside])
+    }
+    fn test_and(inside: ParsedSearch) -> ParsedSearch {
+        ParsedSearch::And(vec![inside])
+    }
+    fn test_negated(negated: bool, inside: ParsedSearch) -> ParsedSearch {
+        ParsedSearch::Negated(negated, Box::new(inside))
+    }
 
     #[test]
     fn test_keyword_wrapped_in_parens() {
         let input = "(hello)";
         let (_, actual) = parsed_search(input).unwrap();
-        let expected = ParsedSearch::name("hello");
+        let expected = test_or(test_and(test_negated(
+            false,
+            test_or(test_and(test_negated(false, ParsedSearch::name("hello")))),
+        )));
         assert_eq!(actual, expected);
     }
 
@@ -75,7 +89,10 @@ mod tests {
     fn test_negated_keyword_wrapped_in_parens() {
         let input = "(-hello)";
         let (_, actual) = parsed_search(input).unwrap();
-        let expected = ParsedSearch::name("hello");
+        let expected = test_or(test_and(test_negated(
+            false,
+            test_or(test_and(test_negated(true, ParsedSearch::name("hello")))),
+        )));
         assert_eq!(actual, expected);
     }
 
@@ -83,11 +100,91 @@ mod tests {
     fn test_parse_search_single_color_query() {
         let input = "color:red";
         let (_, actual) = parsed_search(input).unwrap();
-        let expected = ParsedSearch::color_query(ColorQuery {
-            operand: Red,
-            operator: Colon,
-            negated: false,
-        });
+
+        let expected = test_or(test_and(test_negated(
+            false,
+            ParsedSearch::color_query(ColorQuery {
+                operand: ColorOperand::Red,
+                operator: ColorOperator::Colon,
+                negated: false,
+            }),
+        )));
         assert_eq!(actual, expected);
     }
+
+    #[test]
+    fn basic_commander_search() {
+        let input = "c>=esper pow<3 t:creature";
+        let expected = test_or(ParsedSearch::And(vec![
+            test_negated(
+                false,
+                ParsedSearch::color_query(ColorQuery {
+                    operator: ColorOperator::GreaterThanOrEqual,
+                    operand: ColorOperand::Esper,
+                    negated: false,
+                }),
+            ),
+            test_negated(
+                false,
+                ParsedSearch::power_query(PowerQuery {
+                    operator: PowerOperator::LessThan,
+                    operand: PowerOperand::Number("3".to_string()),
+                    negated: false,
+                }),
+            ),
+            test_negated(
+                false,
+                ParsedSearch::type_line(TypeLineQuery {
+                    operand: "creature".to_string(),
+                    negated: false,
+                }),
+            ),
+        ]));
+        let (_, actual) = parsed_search(input).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    // #[test]
+    // pub fn top_level_parens_and() {
+    //     let input = "(c:esper pow<3)";
+    //     let expected = ParsedSearch::and(
+    //         vec![
+    //             ParsedSearch::color(ColorQuery {
+    //                 operator: ColorComparison::GreaterThanOrEqual,
+    //                 comparison: Color::Esper,
+    //                 is_negated: false,
+    //             }),
+    //             ParsedSearch::power(PowerQuery {
+    //                 operator: ComparisonOperator::LessThan,
+    //                 comparison: Comparison::Number("3".to_string()),
+    //                 is_negated: false,
+    //             }),
+    //         ],
+    //         false,
+    //     );
+    //     let actual = search(input).unwrap();
+    //     assert_eq!(actual, expected);
+    // }
+
+    // #[test]
+    // pub fn top_level_parens_one_name() {
+    //     let input = "(sliver)";
+    //     let expected = ParsedSearch::name(Name::text("sliver"));
+    //     let actual = search(input).unwrap();
+    //     assert_eq!(actual, expected);
+    // }
+
+    // #[test]
+    // pub fn top_level_parens_two_names() {
+    //     let input = "(sliver queen)";
+    //     let expected = ParsedSearch::and(
+    //         vec![
+    //             ParsedSearch::name(Name::text("sliver")),
+    //             ParsedSearch::name(Name::text("queen")),
+    //         ],
+    //         false,
+    //     );
+    //     let actual = search(input).unwrap();
+    //     assert_eq!(actual, expected);
+    // }
 }
