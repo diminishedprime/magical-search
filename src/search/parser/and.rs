@@ -22,6 +22,22 @@ pub fn and(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
     .parse(input)
 }
 
+impl ParsedSearch {
+    pub fn and(searches: Vec<ParsedSearch>, negated: bool) -> Self {
+        if searches.len() == 1 {
+            searches
+                .into_iter()
+                .nth(0)
+                .expect("Invalid invariant: Just checked length equals 1")
+        } else {
+            Self::And(And {
+                items: searches,
+                negated,
+            })
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

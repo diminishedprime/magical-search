@@ -6,6 +6,8 @@ use nom::{
 };
 use nom_supreme::{error::ErrorTree, tag::complete::tag, ParserExt};
 
+use crate::search::{ParsedSearch, SearchKeyword};
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Name {
     pub text: String,
@@ -34,6 +36,12 @@ pub fn name(input: &str) -> IResult<&str, Name, ErrorTree<&str>> {
         .peek()
         .parse(input)?;
     quoted_or_until_space.map(Name::text).parse(input)
+}
+
+impl ParsedSearch {
+    pub fn name(name: Name) -> Self {
+        Self::Keyword(SearchKeyword::Name(name))
+    }
 }
 
 #[cfg(test)]

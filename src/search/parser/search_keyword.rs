@@ -51,34 +51,6 @@ impl Default for ParsedSearch {
     }
 }
 
-impl ParsedSearch {
-    pub fn and(searches: Vec<ParsedSearch>, negated: bool) -> Self {
-        if searches.len() == 1 {
-            searches
-                .into_iter()
-                .nth(0)
-                .expect("Invalid invariant: Just checked length equals 1")
-        } else {
-            Self::And(And {
-                items: searches,
-                negated,
-            })
-        }
-    }
-    pub fn color(color: ColorQuery) -> Self {
-        Self::Keyword(SearchKeyword::Color(color))
-    }
-    pub fn power(power: PowerQuery) -> Self {
-        Self::Keyword(SearchKeyword::Power(power))
-    }
-    pub fn name(name: Name) -> Self {
-        Self::Keyword(SearchKeyword::Name(name))
-    }
-    pub fn type_line(type_line: TypeLineQuery) -> Self {
-        Self::Keyword(SearchKeyword::TypeLine(type_line))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

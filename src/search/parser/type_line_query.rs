@@ -5,6 +5,7 @@ use nom_supreme::{
 };
 
 use super::quoted_or_until_space;
+use crate::search::{ParsedSearch, SearchKeyword};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeLineQuery {
@@ -24,6 +25,12 @@ pub fn type_line_query(input: &str) -> IResult<&str, TypeLineQuery, ErrorTree<&s
         is_negated: negate.is_some(),
     })
     .parse(input)
+}
+
+impl ParsedSearch {
+    pub fn type_line(type_line: TypeLineQuery) -> Self {
+        Self::Keyword(SearchKeyword::TypeLine(type_line))
+    }
 }
 
 #[cfg(test)]

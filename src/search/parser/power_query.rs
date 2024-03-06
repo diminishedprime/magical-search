@@ -8,6 +8,7 @@ use nom_supreme::{
 };
 
 use super::{comparison_operator, ComparisonOperator};
+use crate::search::{ParsedSearch, SearchKeyword};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PowerQuery {
@@ -50,6 +51,12 @@ fn power_comparison(input: &str) -> IResult<&str, Comparison, ErrorTree<&str>> {
         double.map(Comparison::from_f64),
     ))
     .parse(input)
+}
+
+impl ParsedSearch {
+    pub fn power(power: PowerQuery) -> Self {
+        Self::Keyword(SearchKeyword::Power(power))
+    }
 }
 
 #[cfg(test)]

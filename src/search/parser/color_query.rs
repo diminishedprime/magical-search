@@ -8,6 +8,7 @@ use nom::{
 use nom_supreme::{error::ErrorTree, ParserExt};
 
 use super::color::{color, Color};
+use crate::search::{ParsedSearch, SearchKeyword};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ColorComparison {
@@ -55,6 +56,12 @@ pub fn color_query(input: &str) -> IResult<&str, ColorQuery, ErrorTree<&str>> {
         is_negated: negate.is_some(),
     })
     .parse(input)
+}
+
+impl ParsedSearch {
+    pub fn color(color: ColorQuery) -> Self {
+        Self::Keyword(SearchKeyword::Color(color))
+    }
 }
 
 #[cfg(test)]
