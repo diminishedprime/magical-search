@@ -10,7 +10,7 @@ use crate::search::{parsed_search::ParsedSearch, SearchKeyword};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeLineQuery {
     pub operand: String,
-    pub is_negated: bool,
+    pub negated: bool,
 }
 
 pub fn type_line_query(input: &str) -> IResult<&str, TypeLineQuery, ErrorTree<&str>> {
@@ -22,7 +22,7 @@ pub fn type_line_query(input: &str) -> IResult<&str, TypeLineQuery, ErrorTree<&s
     ))
     .map(|(negate, _, _, comparison)| TypeLineQuery {
         operand: comparison.to_string(),
-        is_negated: negate.is_some(),
+        negated: negate.is_some(),
     })
     .parse(input)
 }
@@ -42,7 +42,7 @@ mod tests {
         let input = r#"type:"Creature - Goblin""#;
         let expected = TypeLineQuery {
             operand: "Creature - Goblin".to_string(),
-            is_negated: false,
+            negated: false,
         };
         let (_, actual) = type_line_query(input).unwrap();
         assert_eq!(actual, expected);
@@ -53,7 +53,7 @@ mod tests {
         let input = r#"-type:"Sorcery""#;
         let expected = TypeLineQuery {
             operand: "Sorcery".to_string(),
-            is_negated: true,
+            negated: true,
         };
         let (_, actual) = type_line_query(input).unwrap();
         assert_eq!(actual, expected);
@@ -64,7 +64,7 @@ mod tests {
         let input = r#"t:"Land""#;
         let expected = TypeLineQuery {
             operand: "Land".to_string(),
-            is_negated: false,
+            negated: false,
         };
         let (_, actual) = type_line_query(input).unwrap();
         assert_eq!(actual, expected);
@@ -75,7 +75,7 @@ mod tests {
         let input = r#"-t:"Enchantment Creature - Human""#;
         let expected = TypeLineQuery {
             operand: "Enchantment Creature - Human".to_string(),
-            is_negated: true,
+            negated: true,
         };
         let (_, actual) = type_line_query(input).unwrap();
         assert_eq!(actual, expected);
@@ -86,7 +86,7 @@ mod tests {
         let input = r#"type=Artifact"#;
         let expected = TypeLineQuery {
             operand: "Artifact".to_string(),
-            is_negated: false,
+            negated: false,
         };
         let (_, actual) = type_line_query(input).unwrap();
         assert_eq!(actual, expected);

@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::search::{
-    and::And, or::Or, type_line_query::TypeLineQuery, ColorOperator, ColorQuery, Name,
-    ParsedSearch, PowerOperand, PowerOperator, PowerQuery, SearchKeyword,
+    and::And, or::Or, parens::Parens, type_line_query::TypeLineQuery, ColorOperator, ColorQuery,
+    Name, ParsedSearch, PowerOperand, PowerOperator, PowerQuery, SearchKeyword,
 };
 
 pub trait ToSql {
@@ -47,7 +47,7 @@ impl ToSql for PowerQuery {
         format!(
             "{negated}({clauses})",
             clauses = clauses,
-            negated = if self.is_negated { " NOT " } else { "" }
+            negated = if self.negated { " NOT " } else { "" }
         )
     }
 }
@@ -147,7 +147,7 @@ impl ToSql for ColorQuery {
         format!(
             "{negated}({clauses})",
             clauses = clauses,
-            negated = if self.is_negated { " NOT " } else { "" }
+            negated = if self.negated { " NOT " } else { "" }
         )
     }
 }
@@ -194,12 +194,17 @@ impl ToSql for ParsedSearch {
                             "OR"
                         }
                     ));
-                if *negated {
-                    format!("NOT ({queries})", queries = queries)
-                } else {
-                    queries
-                }
+                format!(
+                    "{negated}({queries})",
+                    queries = queries,
+                    negated = if *negated { " NOT " } else { "" }
+                )
             }
+            ParsedSearch::Parens(Parens { operand, negated }) => format!(
+                "{negated}({operand})",
+                operand = operand.to_sql(),
+                negated = if *negated { " NOT " } else { "" }
+            ),
         }
     }
 }
@@ -284,7 +289,7 @@ mod tests {
     pub fn equals_esper_and_power_equals_touhgness() {
         let search = search::search("c=ESPER pow=toughness").unwrap();
         let actual = search.to_sql();
-        let expected = "(cards.B=TRUE AND cards.G=FALSE AND cards.R=FALSE AND cards.U=TRUE AND cards.W=TRUE) AND (cards.power=cards.toughness)";
+        let expected = "((cards.B=TRUE AND cards.G=FALSE AND cards.R=FALSE AND cards.U=TRUE AND cards.W=TRUE) AND (cards.power=cards.toughness))";
         assert_eq!(actual, expected)
     }
 }

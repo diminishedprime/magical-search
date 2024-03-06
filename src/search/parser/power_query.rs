@@ -41,7 +41,7 @@ impl Display for PowerOperator {
 pub struct PowerQuery {
     pub operator: PowerOperator,
     pub operand: PowerOperand,
-    pub is_negated: bool,
+    pub negated: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -88,7 +88,7 @@ pub fn power_query(input: &str) -> IResult<&str, PowerQuery, ErrorTree<&str>> {
     .map(|(negate, _, operator, comparison)| PowerQuery {
         operator,
         operand: comparison,
-        is_negated: negate.is_some(),
+        negated: negate.is_some(),
     })
     .parse(input)
 }
@@ -108,14 +108,14 @@ mod tests {
             Self {
                 operator: self.operator,
                 operand: self.operand,
-                is_negated: !self.is_negated,
+                negated: !self.negated,
             }
         }
         pub fn new(operator: PowerOperator, comparison: PowerOperand) -> Self {
             Self {
                 operator,
                 operand: comparison,
-                is_negated: false,
+                negated: false,
             }
         }
     }

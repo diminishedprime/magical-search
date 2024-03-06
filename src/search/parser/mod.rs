@@ -3,6 +3,7 @@ pub(crate) mod color;
 pub(crate) mod color_query;
 pub(crate) mod name;
 pub(crate) mod or;
+pub(crate) mod parens;
 pub(crate) mod parsed_search;
 pub(crate) mod power_query;
 pub(crate) mod search_keyword;
@@ -28,6 +29,15 @@ pub struct Search {
     pub input_text: String,
 }
 
+impl Default for Search {
+    fn default() -> Self {
+        Self {
+            parsed_search: None,
+            input_text: "".to_string(),
+        }
+    }
+}
+
 impl From<&str> for Search {
     fn from(input_text: &str) -> Self {
         Self {
@@ -49,16 +59,16 @@ mod test {
                 ParsedSearch::color_query(ColorQuery {
                     operator: ColorOperator::GreaterThanOrEqual,
                     operand: ColorOperand::Esper,
-                    is_negated: false,
+                    negated: false,
                 }),
                 ParsedSearch::power_query(PowerQuery {
                     operator: PowerOperator::LessThan,
                     operand: PowerOperand::Number("3".to_string()),
-                    is_negated: false,
+                    negated: false,
                 }),
                 ParsedSearch::type_line(TypeLineQuery {
                     operand: "creature".to_string(),
-                    is_negated: false,
+                    negated: false,
                 }),
             ],
             false,

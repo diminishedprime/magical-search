@@ -5,7 +5,10 @@ use iced::{
 use itertools::Itertools;
 
 use crate::{
-    card::Card, database::Database, search::ParsedSearch, Message, MessageError, CARDS_PER_ROW,
+    card::Card,
+    database::Database,
+    search::{ParsedSearch, Search},
+    Message, MessageError, CARDS_PER_ROW,
 };
 
 #[derive(Debug, Clone)]
@@ -43,10 +46,7 @@ impl Cards {
         image_grid.into()
     }
 
-    pub async fn next_row(
-        cursor: usize,
-        search: ParsedSearch,
-    ) -> Result<Vec<String>, MessageError> {
+    pub async fn next_row(cursor: usize, search: Search) -> Result<Vec<String>, MessageError> {
         Ok(
             Database::fetch_card_ids(cursor, search)
                 .await
@@ -54,7 +54,7 @@ impl Cards {
         )
     }
 
-    pub fn initial_rows_for(search: ParsedSearch) -> Command<Message> {
+    pub fn initial_rows_for(search: Search) -> Command<Message> {
         Command::perform(Cards::next_row(0, search.clone()), Message::LoadRow)
     }
 }

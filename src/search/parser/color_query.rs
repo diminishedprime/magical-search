@@ -30,7 +30,7 @@ pub enum ColorOperator {
 pub struct ColorQuery {
     pub operator: ColorOperator,
     pub operand: ColorOperand,
-    pub is_negated: bool,
+    pub negated: bool,
 }
 
 fn color_operator(input: &str) -> IResult<&str, ColorOperator, ErrorTree<&str>> {
@@ -56,7 +56,7 @@ pub fn color_query(input: &str) -> IResult<&str, ColorQuery, ErrorTree<&str>> {
     .map(|(negate, _color_tag, operator, comparison)| ColorQuery {
         operator,
         operand: comparison,
-        is_negated: negate.is_some(),
+        negated: negate.is_some(),
     })
     .parse(input)
 }
@@ -76,14 +76,14 @@ mod tests {
             Self {
                 operator: self.operator,
                 operand: self.operand,
-                is_negated: !self.is_negated,
+                negated: !self.negated,
             }
         }
         pub fn new(operator: ColorOperator, color: ColorOperand) -> Self {
             Self {
                 operator,
                 operand: color,
-                is_negated: false,
+                negated: false,
             }
         }
     }

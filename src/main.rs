@@ -87,7 +87,7 @@ impl Application for MagicalSearch {
     fn new(_flags: Self::Flags) -> (Self, iced::Command<Self::Message>) {
         (
             MagicalSearch::Loading,
-            Cards::initial_rows_for(ParsedSearch::default()),
+            Cards::initial_rows_for(Search::default()),
         )
     }
 
@@ -124,13 +124,7 @@ impl Application for MagicalSearch {
                 Message::SearchInputChanged(ref input) => {
                     state.search = Search::from(input.as_str());
                     state.current_cards.clear();
-                    if let Some(search) = &state.search.parsed_search {
-                        Cards::initial_rows_for(search.clone())
-                    } else if input == "" {
-                        Cards::initial_rows_for(ParsedSearch::default())
-                    } else {
-                        Command::none()
-                    }
+                    Cards::initial_rows_for(state.search.clone())
                 }
                 Message::CardLoaded(card) => {
                     match card {
@@ -224,12 +218,10 @@ impl Application for MagicalSearch {
                 Message::EndOfCardsGridVisible(rect) => {
                     if rect.is_some() {
                         let cursor = state.current_cards.cursor.clone();
-                        let search = state
-                            .search
-                            .parsed_search
-                            .clone()
-                            .unwrap_or(ParsedSearch::default());
-                        Command::perform(Cards::next_row(cursor, search), Message::LoadRow)
+                        Command::perform(
+                            Cards::next_row(cursor, state.search.clone()),
+                            Message::LoadRow,
+                        )
                     } else {
                         Command::none()
                     }

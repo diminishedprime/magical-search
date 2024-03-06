@@ -1,6 +1,6 @@
 use nom::{
     branch::alt, bytes::complete::tag_no_case, character::complete::space1, combinator::opt,
-    multi::separated_list1, sequence::tuple, IResult, Parser,
+    multi::separated_list0, sequence::tuple, IResult, Parser,
 };
 use nom_supreme::{error::ErrorTree, tag::complete::tag};
 
@@ -15,7 +15,7 @@ pub struct And {
 pub fn and(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
     tuple((
         opt(tag("-")),
-        separated_list1(alt((tag_no_case(" AND "), space1)), search_keyword),
+        separated_list0(alt((tag_no_case(" AND "), space1)), search_keyword),
     ))
     .map(|(negate, items)| ParsedSearch::and(items, negate.is_some()))
     .parse(input)
@@ -28,6 +28,7 @@ impl ParsedSearch {
                 .into_iter()
                 .nth(0)
                 .expect("Invalid invariant: Just checked length equals 1")
+                .negated(negated)
         } else {
             Self::And(And { operands, negated })
         }
@@ -45,8 +46,8 @@ mod test {
         let (_, actual) = and(input).unwrap();
         let expected = ParsedSearch::and(
             vec![
-                ParsedSearch::name(Name::text("name1")),
-                ParsedSearch::name(Name::text("name2")),
+                ParsedSearch::name(Name::text("name1", false)),
+                ParsedSearch::name(Name::text("name2", false)),
             ],
             false,
         );

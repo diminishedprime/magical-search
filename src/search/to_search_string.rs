@@ -9,7 +9,7 @@ impl ToSearchString for ParsedSearch {
         match self {
             ParsedSearch::Keyword(kw) => match kw {
                 super::SearchKeyword::ColorQuery(ColorQuery {
-                    is_negated,
+                    negated: is_negated,
                     operator,
                     operand: comparison,
                 }) => {
@@ -26,6 +26,7 @@ impl ToSearchString for ParsedSearch {
             },
             ParsedSearch::And(_) => todo!(),
             ParsedSearch::Or(_) => todo!(),
+            ParsedSearch::Parens(_) => todo!(),
         }
     }
 }

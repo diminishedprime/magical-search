@@ -11,7 +11,7 @@ use rusqlite::{
 use crate::{
     card::card_data::{CardData, ImageInfo, ImageSize},
     db::{GET_CARD, WRITE_FACE_SMALL_BLOB, WRITE_LARGE_IMAGE_BLOB, WRITE_SMALL_IMAGE_BLOB},
-    search::ParsedSearch,
+    search::{ParsedSearch, Search},
     CARDS_PER_ROW,
 };
 
@@ -27,13 +27,17 @@ impl Database {
 
     pub async fn fetch_card_ids(
         cursor: usize,
-        search: ParsedSearch,
+        search: Search,
     ) -> Result<Vec<String>, anyhow::Error> {
+        println!("Search: {:?}", search);
         let conn = Database::connection().await?;
         conn.call(move |conn| {
             let sql = format!(
                 include_str!("get_ids_with_clauses.sql"),
-                clauses = search.to_clauses()
+                clauses = search
+                    .parsed_search
+                    .map(|s| s.to_clauses())
+                    .unwrap_or(String::new()) // clauses = search.to_clauses()
             );
             let mut stmt = conn.prepare(&sql)?;
             let card_ids = stmt

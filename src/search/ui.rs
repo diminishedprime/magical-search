@@ -12,6 +12,7 @@ impl Search {
                     ParsedSearch::Keyword(_) => todo!(),
                     ParsedSearch::And(_) => todo!(),
                     ParsedSearch::Or(_) => todo!(),
+                    ParsedSearch::Parens(_) => todo!(),
                 };
             }
             None => todo!(),
