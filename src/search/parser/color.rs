@@ -4,7 +4,7 @@ use nom::{branch::alt, multi::many1, IResult, Parser};
 use nom_supreme::{error::ErrorTree, tag::complete::tag_no_case, ParserExt};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Color {
+pub enum ColorOperand {
     Red,
     Blue,
     Black,
@@ -39,18 +39,18 @@ pub enum Color {
     WUBRG,
 }
 
-impl Ord for Color {
+impl Ord for ColorOperand {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.order().cmp(&other.order())
     }
 }
-impl PartialOrd for Color {
+impl PartialOrd for ColorOperand {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.order().partial_cmp(&other.order())
     }
 }
 
-impl Color {
+impl ColorOperand {
     pub fn as_set(&self) -> HashSet<String> {
         HashSet::from_iter(self.as_vec())
     }
@@ -59,136 +59,148 @@ impl Color {
     }
     fn order(&self) -> usize {
         match self {
-            Color::White => 0,
-            Color::Blue => 1,
-            Color::Black => 2,
-            Color::Red => 3,
-            Color::Green => 4,
+            ColorOperand::White => 0,
+            ColorOperand::Blue => 1,
+            ColorOperand::Black => 2,
+            ColorOperand::Red => 3,
+            ColorOperand::Green => 4,
             // Technically we shouldn't be sorting Color::Esper, but this will
             // be a good enough workaround.
             _ => 5,
         }
     }
-    fn collapse(mut colors: Vec<Color>) -> Color {
+    fn collapse(mut colors: Vec<ColorOperand>) -> ColorOperand {
         colors.sort();
         colors.dedup();
         match colors.as_slice() {
-            [Color::White, Color::Blue, Color::Black, Color::Red, Color::Green] => Color::WUBRG,
-            [Color::White, Color::Black, Color::Red, Color::Green] => Color::Aggression,
-            [Color::White, Color::Blue, Color::Red, Color::Green] => Color::Altruism,
-            [Color::White, Color::Blue, Color::Black, Color::Green] => Color::Growth,
-            [Color::White, Color::Blue, Color::Black, Color::Red] => Color::Artifice,
-            [Color::White, Color::Blue, Color::Black] => Color::Esper,
-            [Color::White, Color::Blue, Color::Red] => Color::Jeskai,
-            [Color::White, Color::Blue, Color::Green] => Color::Bant,
-            [Color::White, Color::Black, Color::Red] => Color::Mardu,
-            [Color::White, Color::Black, Color::Green] => Color::Abzan,
-            [Color::White, Color::Red, Color::Green] => Color::Naya,
-            [Color::White, Color::Blue] => Color::Azorius,
-            [Color::White, Color::Black] => Color::Orzhov,
-            [Color::White, Color::Red] => Color::Boros,
-            [Color::White, Color::Green] => Color::Selesnya,
-            [Color::Blue, Color::Black, Color::Red, Color::Green] => Color::Grixis,
-            [Color::Blue, Color::Black, Color::Red] => Color::Dimir,
-            [Color::Blue, Color::Black, Color::Green] => Color::Golgari,
-            [Color::Blue, Color::Red, Color::Green] => Color::Izzet,
-            [Color::Blue, Color::Black] => Color::Dimir,
-            [Color::Blue, Color::Red] => Color::Izzet,
-            [Color::Blue, Color::Green] => Color::Simic,
-            [Color::Black, Color::Red, Color::Green] => Color::Jund,
-            [Color::Black, Color::Red] => Color::Rakdos,
-            [Color::Black, Color::Green] => Color::Golgari,
-            [Color::Red, Color::Green] => Color::Gruul,
-            [Color::White] => Color::White,
-            [Color::Blue] => Color::Blue,
-            [Color::Black] => Color::Black,
-            [Color::Red] => Color::Red,
-            [Color::Green] => Color::Green,
+            [ColorOperand::White, ColorOperand::Blue, ColorOperand::Black, ColorOperand::Red, ColorOperand::Green] => {
+                ColorOperand::WUBRG
+            }
+            [ColorOperand::White, ColorOperand::Black, ColorOperand::Red, ColorOperand::Green] => {
+                ColorOperand::Aggression
+            }
+            [ColorOperand::White, ColorOperand::Blue, ColorOperand::Red, ColorOperand::Green] => {
+                ColorOperand::Altruism
+            }
+            [ColorOperand::White, ColorOperand::Blue, ColorOperand::Black, ColorOperand::Green] => {
+                ColorOperand::Growth
+            }
+            [ColorOperand::White, ColorOperand::Blue, ColorOperand::Black, ColorOperand::Red] => {
+                ColorOperand::Artifice
+            }
+            [ColorOperand::White, ColorOperand::Blue, ColorOperand::Black] => ColorOperand::Esper,
+            [ColorOperand::White, ColorOperand::Blue, ColorOperand::Red] => ColorOperand::Jeskai,
+            [ColorOperand::White, ColorOperand::Blue, ColorOperand::Green] => ColorOperand::Bant,
+            [ColorOperand::White, ColorOperand::Black, ColorOperand::Red] => ColorOperand::Mardu,
+            [ColorOperand::White, ColorOperand::Black, ColorOperand::Green] => ColorOperand::Abzan,
+            [ColorOperand::White, ColorOperand::Red, ColorOperand::Green] => ColorOperand::Naya,
+            [ColorOperand::White, ColorOperand::Blue] => ColorOperand::Azorius,
+            [ColorOperand::White, ColorOperand::Black] => ColorOperand::Orzhov,
+            [ColorOperand::White, ColorOperand::Red] => ColorOperand::Boros,
+            [ColorOperand::White, ColorOperand::Green] => ColorOperand::Selesnya,
+            [ColorOperand::Blue, ColorOperand::Black, ColorOperand::Red, ColorOperand::Green] => {
+                ColorOperand::Grixis
+            }
+            [ColorOperand::Blue, ColorOperand::Black, ColorOperand::Red] => ColorOperand::Dimir,
+            [ColorOperand::Blue, ColorOperand::Black, ColorOperand::Green] => ColorOperand::Golgari,
+            [ColorOperand::Blue, ColorOperand::Red, ColorOperand::Green] => ColorOperand::Izzet,
+            [ColorOperand::Blue, ColorOperand::Black] => ColorOperand::Dimir,
+            [ColorOperand::Blue, ColorOperand::Red] => ColorOperand::Izzet,
+            [ColorOperand::Blue, ColorOperand::Green] => ColorOperand::Simic,
+            [ColorOperand::Black, ColorOperand::Red, ColorOperand::Green] => ColorOperand::Jund,
+            [ColorOperand::Black, ColorOperand::Red] => ColorOperand::Rakdos,
+            [ColorOperand::Black, ColorOperand::Green] => ColorOperand::Golgari,
+            [ColorOperand::Red, ColorOperand::Green] => ColorOperand::Gruul,
+            [ColorOperand::White] => ColorOperand::White,
+            [ColorOperand::Blue] => ColorOperand::Blue,
+            [ColorOperand::Black] => ColorOperand::Black,
+            [ColorOperand::Red] => ColorOperand::Red,
+            [ColorOperand::Green] => ColorOperand::Green,
             _ => panic!("Invalid color combination: {:?}", colors),
         }
     }
 }
 
-impl fmt::Display for Color {
+impl fmt::Display for ColorOperand {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let symbol = match self {
-            Color::White => "W",
-            Color::Blue => "U",
-            Color::Black => "B",
-            Color::Red => "R",
-            Color::Green => "G",
-            Color::Azorius => "WU",
-            Color::Boros => "WR",
-            Color::Dimir => "UB",
-            Color::Golgari => "BG",
-            Color::Gruul => "RG",
-            Color::Izzet => "UR",
-            Color::Orzhov => "WB",
-            Color::Rakdos => "BR",
-            Color::Selesnya => "WG",
-            Color::Simic => "UG",
-            Color::Colorless => "C",
-            Color::Multicolor => "M",
-            Color::Abzan => "WBG",
-            Color::Jeskai => "WUR",
-            Color::Sultai => "UBG",
-            Color::Mardu => "WRB",
-            Color::Temur => "URG",
-            Color::Bant => "WUG",
-            Color::Esper => "WUB",
-            Color::Grixis => "UBR",
-            Color::Jund => "BRG",
-            Color::Naya => "WRG",
-            Color::WUBRG => "WUBRG",
-            Color::Aggression => "WBRG",
-            Color::Altruism => "WURG",
-            Color::Growth => "WUBG",
-            Color::Artifice => "WUBR",
+            ColorOperand::White => "W",
+            ColorOperand::Blue => "U",
+            ColorOperand::Black => "B",
+            ColorOperand::Red => "R",
+            ColorOperand::Green => "G",
+            ColorOperand::Azorius => "WU",
+            ColorOperand::Boros => "WR",
+            ColorOperand::Dimir => "UB",
+            ColorOperand::Golgari => "BG",
+            ColorOperand::Gruul => "RG",
+            ColorOperand::Izzet => "UR",
+            ColorOperand::Orzhov => "WB",
+            ColorOperand::Rakdos => "BR",
+            ColorOperand::Selesnya => "WG",
+            ColorOperand::Simic => "UG",
+            ColorOperand::Colorless => "C",
+            ColorOperand::Multicolor => "M",
+            ColorOperand::Abzan => "WBG",
+            ColorOperand::Jeskai => "WUR",
+            ColorOperand::Sultai => "UBG",
+            ColorOperand::Mardu => "WRB",
+            ColorOperand::Temur => "URG",
+            ColorOperand::Bant => "WUG",
+            ColorOperand::Esper => "WUB",
+            ColorOperand::Grixis => "UBR",
+            ColorOperand::Jund => "BRG",
+            ColorOperand::Naya => "WRG",
+            ColorOperand::WUBRG => "WUBRG",
+            ColorOperand::Aggression => "WBRG",
+            ColorOperand::Altruism => "WURG",
+            ColorOperand::Growth => "WUBG",
+            ColorOperand::Artifice => "WUBR",
         };
         write!(f, "{}", symbol)
     }
 }
 
-fn color_combinations(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
-    many1(basic_color).map(Color::collapse).parse(input)
+fn color_combinations(input: &str) -> IResult<&str, ColorOperand, ErrorTree<&str>> {
+    many1(basic_color).map(ColorOperand::collapse).parse(input)
 }
 
-fn basic_color(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
+fn basic_color(input: &str) -> IResult<&str, ColorOperand, ErrorTree<&str>> {
     alt((
-        tag_no_case("w").value(Color::White),
-        tag_no_case("u").value(Color::Blue),
-        tag_no_case("b").value(Color::Black),
-        tag_no_case("r").value(Color::Red),
-        tag_no_case("g").value(Color::Green),
+        tag_no_case("w").value(ColorOperand::White),
+        tag_no_case("u").value(ColorOperand::Blue),
+        tag_no_case("b").value(ColorOperand::Black),
+        tag_no_case("r").value(ColorOperand::Red),
+        tag_no_case("g").value(ColorOperand::Green),
     ))
     .parse(input)
 }
 
-fn color_1(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
+fn color_1(input: &str) -> IResult<&str, ColorOperand, ErrorTree<&str>> {
     alt((
-        tag_no_case("abzan").value(Color::Abzan),
-        tag_no_case("azorius").value(Color::Azorius),
-        tag_no_case("bant").value(Color::Bant),
-        tag_no_case("black").value(Color::Black),
-        tag_no_case("blue").value(Color::Blue),
-        tag_no_case("boros").value(Color::Boros),
-        tag_no_case("colorless").value(Color::Colorless),
-        tag_no_case("dimir").value(Color::Dimir),
-        tag_no_case("esper").value(Color::Esper),
+        tag_no_case("abzan").value(ColorOperand::Abzan),
+        tag_no_case("azorius").value(ColorOperand::Azorius),
+        tag_no_case("bant").value(ColorOperand::Bant),
+        tag_no_case("black").value(ColorOperand::Black),
+        tag_no_case("blue").value(ColorOperand::Blue),
+        tag_no_case("boros").value(ColorOperand::Boros),
+        tag_no_case("colorless").value(ColorOperand::Colorless),
+        tag_no_case("dimir").value(ColorOperand::Dimir),
+        tag_no_case("esper").value(ColorOperand::Esper),
     ))
     .parse(input)
 }
-fn color_2(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
+fn color_2(input: &str) -> IResult<&str, ColorOperand, ErrorTree<&str>> {
     alt((
-        tag_no_case("golgari").value(Color::Golgari),
-        tag_no_case("green").value(Color::Green),
-        tag_no_case("grixis").value(Color::Grixis),
-        tag_no_case("gruul").value(Color::Gruul),
-        tag_no_case("izzet").value(Color::Izzet),
-        tag_no_case("jeskai").value(Color::Jeskai),
-        tag_no_case("jund").value(Color::Jund),
-        tag_no_case("mardu").value(Color::Mardu),
-        tag_no_case("multicolor").value(Color::Multicolor),
+        tag_no_case("golgari").value(ColorOperand::Golgari),
+        tag_no_case("green").value(ColorOperand::Green),
+        tag_no_case("grixis").value(ColorOperand::Grixis),
+        tag_no_case("gruul").value(ColorOperand::Gruul),
+        tag_no_case("izzet").value(ColorOperand::Izzet),
+        tag_no_case("jeskai").value(ColorOperand::Jeskai),
+        tag_no_case("jund").value(ColorOperand::Jund),
+        tag_no_case("mardu").value(ColorOperand::Mardu),
+        tag_no_case("multicolor").value(ColorOperand::Multicolor),
     ))
     .parse(input)
 }
@@ -203,22 +215,22 @@ fn color_2(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
 //
 // Use c or colorless to match colorless cards, and m or multicolor to match
 // multicolor cards.
-pub fn color(input: &str) -> IResult<&str, Color, ErrorTree<&str>> {
+pub fn color(input: &str) -> IResult<&str, ColorOperand, ErrorTree<&str>> {
     // I can "only" parse 21 at a time, so doing these in chunks of 10.
     alt((
         color_1,
         color_2,
-        tag_no_case("naya").value(Color::Naya),
-        tag_no_case("orzhov").value(Color::Orzhov),
-        tag_no_case("red").value(Color::Red),
-        tag_no_case("rakdos").value(Color::Rakdos),
-        tag_no_case("selesnya").value(Color::Selesnya),
-        tag_no_case("simic").value(Color::Simic),
-        tag_no_case("sultai").value(Color::Sultai),
-        tag_no_case("temur").value(Color::Temur),
-        tag_no_case("white").value(Color::White),
-        tag_no_case("c").value(Color::Colorless),
-        tag_no_case("m").value(Color::Multicolor),
+        tag_no_case("naya").value(ColorOperand::Naya),
+        tag_no_case("orzhov").value(ColorOperand::Orzhov),
+        tag_no_case("red").value(ColorOperand::Red),
+        tag_no_case("rakdos").value(ColorOperand::Rakdos),
+        tag_no_case("selesnya").value(ColorOperand::Selesnya),
+        tag_no_case("simic").value(ColorOperand::Simic),
+        tag_no_case("sultai").value(ColorOperand::Sultai),
+        tag_no_case("temur").value(ColorOperand::Temur),
+        tag_no_case("white").value(ColorOperand::White),
+        tag_no_case("c").value(ColorOperand::Colorless),
+        tag_no_case("m").value(ColorOperand::Multicolor),
         color_combinations,
     ))
     .parse(input)
@@ -234,211 +246,211 @@ mod tests {
     #[test]
     fn test_parse_color_abzan() {
         let (_, color) = color("abzan").unwrap();
-        assert_eq!(color, Color::Abzan);
+        assert_eq!(color, ColorOperand::Abzan);
     }
 
     #[test]
     fn test_parse_color_azorius() {
         let (_, color) = color("azorius").unwrap();
-        assert_eq!(color, Color::Azorius);
+        assert_eq!(color, ColorOperand::Azorius);
     }
 
     #[test]
     fn test_parse_color_b() {
         let (_, color) = color("b").unwrap();
-        assert_eq!(color, Color::Black);
+        assert_eq!(color, ColorOperand::Black);
     }
 
     #[test]
     fn test_parse_color_bant() {
         let (_, color) = color("bant").unwrap();
-        assert_eq!(color, Color::Bant);
+        assert_eq!(color, ColorOperand::Bant);
     }
 
     #[test]
     fn test_parse_color_black() {
         let (_, color) = color("black").unwrap();
-        assert_eq!(color, Color::Black);
+        assert_eq!(color, ColorOperand::Black);
     }
 
     #[test]
     fn test_parse_color_blue() {
         let (_, color) = color("blue").unwrap();
-        assert_eq!(color, Color::Blue);
+        assert_eq!(color, ColorOperand::Blue);
     }
 
     #[test]
     fn test_parse_color_boros() {
         let (_, color) = color("boros").unwrap();
-        assert_eq!(color, Color::Boros);
+        assert_eq!(color, ColorOperand::Boros);
     }
 
     #[test]
     fn test_parse_color_c() {
         let (_, color) = color("c").unwrap();
-        assert_eq!(color, Color::Colorless);
+        assert_eq!(color, ColorOperand::Colorless);
     }
 
     #[test]
     fn test_parse_color_colorless() {
         let (_, color) = color("colorless").unwrap();
-        assert_eq!(color, Color::Colorless);
+        assert_eq!(color, ColorOperand::Colorless);
     }
 
     #[test]
     fn test_parse_color_dimir() {
         let (_, color) = color("dimir").unwrap();
-        assert_eq!(color, Color::Dimir);
+        assert_eq!(color, ColorOperand::Dimir);
     }
 
     #[test]
     fn test_parse_color_esper() {
         let (_, color) = color("esper").unwrap();
-        assert_eq!(color, Color::Esper);
+        assert_eq!(color, ColorOperand::Esper);
     }
 
     #[test]
     fn test_parse_color_g() {
         let (_, color) = color("g").unwrap();
-        assert_eq!(color, Color::Green);
+        assert_eq!(color, ColorOperand::Green);
     }
 
     #[test]
     fn test_parse_color_golgari() {
         let (_, color) = color("golgari").unwrap();
-        assert_eq!(color, Color::Golgari);
+        assert_eq!(color, ColorOperand::Golgari);
     }
 
     #[test]
     fn test_parse_color_green() {
         let (_, color) = color("green").unwrap();
-        assert_eq!(color, Color::Green);
+        assert_eq!(color, ColorOperand::Green);
     }
 
     #[test]
     fn test_parse_color_grixis() {
         let (_, color) = color("grixis").unwrap();
-        assert_eq!(color, Color::Grixis);
+        assert_eq!(color, ColorOperand::Grixis);
     }
 
     #[test]
     fn test_parse_color_gruul() {
         let (_, color) = color("gruul").unwrap();
-        assert_eq!(color, Color::Gruul);
+        assert_eq!(color, ColorOperand::Gruul);
     }
 
     #[test]
     fn test_parse_color_izzet() {
         let (_, color) = color("izzet").unwrap();
-        assert_eq!(color, Color::Izzet);
+        assert_eq!(color, ColorOperand::Izzet);
     }
 
     #[test]
     fn test_parse_color_jeskai() {
         let (_, color) = color("jeskai").unwrap();
-        assert_eq!(color, Color::Jeskai);
+        assert_eq!(color, ColorOperand::Jeskai);
     }
 
     #[test]
     fn test_parse_color_jund() {
         let (_, color) = color("jund").unwrap();
-        assert_eq!(color, Color::Jund);
+        assert_eq!(color, ColorOperand::Jund);
     }
 
     #[test]
     fn test_parse_color_m() {
         let (_, color) = color("m").unwrap();
-        assert_eq!(color, Color::Multicolor);
+        assert_eq!(color, ColorOperand::Multicolor);
     }
 
     #[test]
     fn test_parse_color_mardu() {
         let (_, color) = color("mardu").unwrap();
-        assert_eq!(color, Color::Mardu);
+        assert_eq!(color, ColorOperand::Mardu);
     }
 
     #[test]
     fn test_parse_color_multicolor() {
         let (_, color) = color("multicolor").unwrap();
-        assert_eq!(color, Color::Multicolor);
+        assert_eq!(color, ColorOperand::Multicolor);
     }
 
     #[test]
     fn test_parse_color_naya() {
         let (_, color) = color("naya").unwrap();
-        assert_eq!(color, Color::Naya);
+        assert_eq!(color, ColorOperand::Naya);
     }
 
     #[test]
     fn test_parse_color_orzhov() {
         let (_, color) = color("orzhov").unwrap();
-        assert_eq!(color, Color::Orzhov);
+        assert_eq!(color, ColorOperand::Orzhov);
     }
 
     #[test]
     fn test_parse_color_r() {
         let (_, color) = color("r").unwrap();
-        assert_eq!(color, Color::Red);
+        assert_eq!(color, ColorOperand::Red);
     }
 
     #[test]
     fn test_parse_color_rakdos() {
         let (_, color) = color("rakdos").unwrap();
-        assert_eq!(color, Color::Rakdos);
+        assert_eq!(color, ColorOperand::Rakdos);
     }
 
     #[test]
     fn test_parse_color_red() {
         let (_, color) = color("red").unwrap();
-        assert_eq!(color, Color::Red);
+        assert_eq!(color, ColorOperand::Red);
     }
 
     #[test]
     fn test_parse_color_selesnya() {
         let (_, color) = color("selesnya").unwrap();
-        assert_eq!(color, Color::Selesnya);
+        assert_eq!(color, ColorOperand::Selesnya);
     }
 
     #[test]
     fn test_parse_color_simic() {
         let (_, color) = color("simic").unwrap();
-        assert_eq!(color, Color::Simic);
+        assert_eq!(color, ColorOperand::Simic);
     }
 
     #[test]
     fn test_parse_color_sultai() {
         let (_, color) = color("sultai").unwrap();
-        assert_eq!(color, Color::Sultai);
+        assert_eq!(color, ColorOperand::Sultai);
     }
 
     #[test]
     fn test_parse_color_temur() {
         let (_, color) = color("temur").unwrap();
-        assert_eq!(color, Color::Temur);
+        assert_eq!(color, ColorOperand::Temur);
     }
 
     #[test]
     fn test_parse_color_u() {
         let (_, color) = color("u").unwrap();
-        assert_eq!(color, Color::Blue);
+        assert_eq!(color, ColorOperand::Blue);
     }
 
     #[test]
     fn test_parse_color_w() {
         let (_, color) = color("w").unwrap();
-        assert_eq!(color, Color::White);
+        assert_eq!(color, ColorOperand::White);
     }
 
     #[test]
     fn test_parse_color_white() {
         let (_, color) = color("white").unwrap();
-        assert_eq!(color, Color::White);
+        assert_eq!(color, ColorOperand::White);
     }
 
     #[test]
     fn test_parse_an_embarassment_of_white() {
         let (_, color) = color("WWWWWWWWWW").unwrap();
-        assert_eq!(color, Color::White);
+        assert_eq!(color, ColorOperand::White);
     }
 
     fn generate_color_combinations(num_colors: usize) -> Vec<Vec<String>> {
@@ -495,21 +507,21 @@ mod tests {
     #[test]
     fn test_sort_colors() {
         let mut colors = vec![
-            Color::Green,
-            Color::Red,
-            Color::Black,
-            Color::Blue,
-            Color::White,
+            ColorOperand::Green,
+            ColorOperand::Red,
+            ColorOperand::Black,
+            ColorOperand::Blue,
+            ColorOperand::White,
         ];
         colors.sort();
         assert_eq!(
             colors,
             vec![
-                Color::White,
-                Color::Blue,
-                Color::Black,
-                Color::Red,
-                Color::Green
+                ColorOperand::White,
+                ColorOperand::Blue,
+                ColorOperand::Black,
+                ColorOperand::Red,
+                ColorOperand::Green
             ]
         );
     }

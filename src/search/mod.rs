@@ -3,4 +3,4 @@ mod to_search_string;
 mod ui;
 
 // export the search module
-pub use parser::*;
+pub use parser::{parsed_search::ParsedSearch, *};

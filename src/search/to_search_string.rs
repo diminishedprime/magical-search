@@ -1,4 +1,4 @@
-use super::{color::Color, ColorComparison, ColorQuery, ParsedSearch};
+use super::{color::ColorOperand, ColorOperator, ColorQuery, ParsedSearch};
 
 trait ToSearchString {
     fn to_search_string(&self) -> String;
@@ -8,10 +8,10 @@ impl ToSearchString for ParsedSearch {
     fn to_search_string(&self) -> String {
         match self {
             ParsedSearch::Keyword(kw) => match kw {
-                super::SearchKeyword::Color(ColorQuery {
+                super::SearchKeyword::ColorQuery(ColorQuery {
                     is_negated,
                     operator,
-                    comparison,
+                    operand: comparison,
                 }) => {
                     format!(
                         "{negated}color{operator}{comparison}",
@@ -20,9 +20,9 @@ impl ToSearchString for ParsedSearch {
                         comparison = comparison.to_search_string()
                     )
                 }
-                super::SearchKeyword::Power(_) => todo!(),
+                super::SearchKeyword::PowerQuery(_) => todo!(),
                 super::SearchKeyword::Name(_) => todo!(),
-                super::SearchKeyword::TypeLine(_) => todo!(),
+                super::SearchKeyword::TypeLineQuery(_) => todo!(),
             },
             ParsedSearch::And(_) => todo!(),
             ParsedSearch::Or(_) => todo!(),
@@ -30,56 +30,56 @@ impl ToSearchString for ParsedSearch {
     }
 }
 
-impl ToSearchString for ColorComparison {
+impl ToSearchString for ColorOperator {
     fn to_search_string(&self) -> String {
         match self {
-            ColorComparison::LessThan => "<",
-            ColorComparison::LessThanOrEqual => "<=",
-            ColorComparison::NotEqual => "!=",
-            ColorComparison::Colon => ":",
-            ColorComparison::Equal => "=",
-            ColorComparison::GreaterThan => ">",
-            ColorComparison::GreaterThanOrEqual => ">=",
+            ColorOperator::LessThan => "<",
+            ColorOperator::LessThanOrEqual => "<=",
+            ColorOperator::NotEqual => "!=",
+            ColorOperator::Colon => ":",
+            ColorOperator::Equal => "=",
+            ColorOperator::GreaterThan => ">",
+            ColorOperator::GreaterThanOrEqual => ">=",
         }
         .to_string()
     }
 }
 
-impl ToSearchString for Color {
+impl ToSearchString for ColorOperand {
     fn to_search_string(&self) -> String {
         match self {
-            Color::Red => "red",
-            Color::Blue => "blue",
-            Color::Black => "black",
-            Color::Green => "green",
-            Color::White => "white",
-            Color::Azorius => "azorious",
-            Color::Boros => "boros",
-            Color::Dimir => "dimir",
-            Color::Golgari => "golgari",
-            Color::Gruul => "gruul",
-            Color::Izzet => "izzet",
-            Color::Orzhov => "orzhov",
-            Color::Rakdos => "rakdos",
-            Color::Selesnya => "selsnya",
-            Color::Simic => "simic",
-            Color::Colorless => "colorless",
-            Color::Multicolor => "multicolor",
-            Color::Abzan => "abzan",
-            Color::Jeskai => "jeskai",
-            Color::Sultai => "sultai",
-            Color::Mardu => "mardu",
-            Color::Temur => "temur",
-            Color::Bant => "bant",
-            Color::Esper => "esper",
-            Color::Grixis => "grixis",
-            Color::Jund => "jund",
-            Color::Naya => "nay",
-            Color::Aggression => "aggression",
-            Color::Altruism => "altruism",
-            Color::Growth => "growth",
-            Color::Artifice => "artifice",
-            Color::WUBRG => "wubrg",
+            ColorOperand::Red => "red",
+            ColorOperand::Blue => "blue",
+            ColorOperand::Black => "black",
+            ColorOperand::Green => "green",
+            ColorOperand::White => "white",
+            ColorOperand::Azorius => "azorious",
+            ColorOperand::Boros => "boros",
+            ColorOperand::Dimir => "dimir",
+            ColorOperand::Golgari => "golgari",
+            ColorOperand::Gruul => "gruul",
+            ColorOperand::Izzet => "izzet",
+            ColorOperand::Orzhov => "orzhov",
+            ColorOperand::Rakdos => "rakdos",
+            ColorOperand::Selesnya => "selsnya",
+            ColorOperand::Simic => "simic",
+            ColorOperand::Colorless => "colorless",
+            ColorOperand::Multicolor => "multicolor",
+            ColorOperand::Abzan => "abzan",
+            ColorOperand::Jeskai => "jeskai",
+            ColorOperand::Sultai => "sultai",
+            ColorOperand::Mardu => "mardu",
+            ColorOperand::Temur => "temur",
+            ColorOperand::Bant => "bant",
+            ColorOperand::Esper => "esper",
+            ColorOperand::Grixis => "grixis",
+            ColorOperand::Jund => "jund",
+            ColorOperand::Naya => "nay",
+            ColorOperand::Aggression => "aggression",
+            ColorOperand::Altruism => "altruism",
+            ColorOperand::Growth => "growth",
+            ColorOperand::Artifice => "artifice",
+            ColorOperand::WUBRG => "wubrg",
         }
         .to_string()
     }

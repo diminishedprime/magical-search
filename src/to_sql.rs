@@ -3,30 +3,52 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::search::{
-    and::And, or::Or, type_line_query::TypeLineQuery, ColorComparison, ColorQuery, Comparison,
-    Name, ParsedSearch, PowerQuery, SearchKeyword,
+    and::And, or::Or, type_line_query::TypeLineQuery, ColorOperator, ColorQuery, Name,
+    ParsedSearch, PowerOperand, PowerOperator, PowerQuery, SearchKeyword,
 };
 
 pub trait ToSql {
     fn to_sql(&self) -> String;
 }
 
+impl ToSql for PowerOperator {
+    fn to_sql(&self) -> String {
+        match self {
+            PowerOperator::LessThan => "<",
+            PowerOperator::LessThanOrEqual => "<=",
+            PowerOperator::NotEqual => "!=",
+            PowerOperator::Colon => "=",
+            PowerOperator::Equal => "=",
+            PowerOperator::GreaterThan => ">",
+            PowerOperator::GreaterThanOrEqual => ">=",
+        }
+        .to_string()
+    }
+}
+
 impl ToSql for PowerQuery {
     fn to_sql(&self) -> String {
-        let operator = if self.is_negated {
-            self.operator.negate()
-        } else {
-            self.operator.clone()
-        };
-        let clauses = match &self.comparison {
-            Comparison::Number(num) => {
-                format!("cards.power{operator}{num}", operator = operator, num = num)
+        let clauses = match &self.operand {
+            PowerOperand::Number(num) => {
+                format!(
+                    "cards.power{operator}{num}",
+                    operator = self.operator.to_sql(),
+                    num = num
+                )
             }
-            Comparison::Tougness => {
-                format!("cards.power{operator}cards.toughness", operator = operator)
+            PowerOperand::Tougness => {
+                format!(
+                    "cards.power{operator}cards.toughness",
+                    operator = self.operator.to_sql()
+                )
             }
         };
-        format!("({clauses})", clauses = clauses)
+
+        format!(
+            "{negated}({clauses})",
+            clauses = clauses,
+            negated = if self.is_negated { " NOT " } else { "" }
+        )
     }
 }
 
@@ -34,9 +56,9 @@ impl ToSql for ColorQuery {
     fn to_sql(&self) -> String {
         let all_colors = ["W", "U", "B", "R", "G"].iter().map(|s| s.to_string());
         let all_colors_set: HashSet<String> = HashSet::from_iter(all_colors.clone());
-        let colors = HashSet::from_iter(self.comparison.as_set());
+        let colors = HashSet::from_iter(self.operand.as_set());
         let clauses = match self.operator {
-            ColorComparison::LessThan => {
+            ColorOperator::LessThan => {
                 let positive = colors
                     .iter()
                     .sorted()
@@ -64,7 +86,7 @@ impl ToSql for ColorQuery {
                 )
             }
             // TODO - check this, not positive.
-            ColorComparison::LessThanOrEqual | ColorComparison::Colon => {
+            ColorOperator::LessThanOrEqual | ColorOperator::Colon => {
                 let positive = colors
                     .iter()
                     .sorted()
@@ -81,12 +103,12 @@ impl ToSql for ColorQuery {
                     negative = negative
                 )
             }
-            ColorComparison::NotEqual => colors
+            ColorOperator::NotEqual => colors
                 .iter()
                 .sorted()
                 .map(|color| format!("cards.{color}=FALSE", color = color))
                 .join(" AND "),
-            ColorComparison::Equal => all_colors
+            ColorOperator::Equal => all_colors
                 .sorted()
                 .map(|color| {
                     if colors.contains(&color) {
@@ -96,7 +118,7 @@ impl ToSql for ColorQuery {
                     }
                 })
                 .join(" AND "),
-            ColorComparison::GreaterThan => {
+            ColorOperator::GreaterThan => {
                 let at_least = colors
                     .iter()
                     .sorted()
@@ -113,7 +135,7 @@ impl ToSql for ColorQuery {
                     others = others
                 )
             }
-            ColorComparison::GreaterThanOrEqual => {
+            ColorOperator::GreaterThanOrEqual => {
                 let at_least = colors
                     .iter()
                     .sorted()
@@ -140,10 +162,10 @@ impl ToSql for Name {
 impl ToSql for SearchKeyword {
     fn to_sql(&self) -> String {
         match self {
-            SearchKeyword::Color(color) => color.to_sql(),
-            SearchKeyword::Power(power) => power.to_sql(),
+            SearchKeyword::ColorQuery(color) => color.to_sql(),
+            SearchKeyword::PowerQuery(power) => power.to_sql(),
             SearchKeyword::Name(name) => name.to_sql(),
-            SearchKeyword::TypeLine(type_line) => type_line.to_sql(),
+            SearchKeyword::TypeLineQuery(type_line) => type_line.to_sql(),
         }
     }
 }
@@ -152,7 +174,14 @@ impl ToSql for ParsedSearch {
     fn to_sql(&self) -> String {
         match self {
             ParsedSearch::Keyword(keyword) => keyword.to_sql(),
-            ParsedSearch::And(And { items, negated }) | ParsedSearch::Or(Or { items, negated }) => {
+            ParsedSearch::And(And {
+                operands: items,
+                negated,
+            })
+            | ParsedSearch::Or(Or {
+                operands: items,
+                negated,
+            }) => {
                 let queries = items
                     .iter()
                     .map(|query| query.to_sql())
@@ -181,7 +210,7 @@ impl ToSql for TypeLineQuery {
         // potential of sql injection. Instead of returning String, I need to
         // return some sort of IntoClause trait or something similar that can
         // include the information on any parameters that need to be passed in.
-        let clauses = format!("cards.type_line LIKE '%{}%'", self.comparison);
+        let clauses = format!("cards.type_line LIKE '%{}%'", self.operand);
         format!("({clauses})", clauses = clauses)
     }
 }

@@ -6,7 +6,8 @@ use nom::{
 };
 use nom_supreme::{error::ErrorTree, tag::complete::tag, ParserExt};
 
-use crate::search::{ParsedSearch, SearchKeyword};
+use super::ParsedSearch;
+use crate::search::SearchKeyword;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Name {

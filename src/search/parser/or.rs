@@ -4,12 +4,11 @@ use nom::{
 };
 use nom_supreme::{error::ErrorTree, tag::complete::tag};
 
-use super::and::and;
-use crate::search::ParsedSearch;
+use super::{and::and, ParsedSearch};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Or {
-    pub items: Vec<ParsedSearch>,
+    pub operands: Vec<ParsedSearch>,
     pub negated: bool,
 }
 
@@ -23,14 +22,14 @@ pub fn or(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
 }
 
 impl ParsedSearch {
-    pub fn or(items: Vec<ParsedSearch>, negated: bool) -> Self {
-        if items.len() == 1 {
-            items
+    pub fn or(operands: Vec<ParsedSearch>, negated: bool) -> Self {
+        if operands.len() == 1 {
+            operands
                 .into_iter()
                 .nth(0)
                 .expect("Invalid invariant: Just checked length equals 1")
         } else {
-            Self::Or(Or { items, negated })
+            Self::Or(Or { operands, negated })
         }
     }
 }
