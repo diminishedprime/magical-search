@@ -3,6 +3,7 @@ pub(crate) mod color;
 pub(crate) mod color_query;
 pub(crate) mod comparison_operator;
 pub(crate) mod name;
+pub(crate) mod or;
 pub(crate) mod power_query;
 pub(crate) mod search_keyword;
 pub(crate) mod type_line_query;

@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::search::{
-    and::And, type_line_query::TypeLineQuery, ColorComparison, ColorQuery, Comparison, Name,
-    ParsedSearch, PowerQuery, SearchKeyword,
+    and::And, or::Or, type_line_query::TypeLineQuery, ColorComparison, ColorQuery, Comparison,
+    Name, ParsedSearch, PowerQuery, SearchKeyword,
 };
 
 pub trait ToSql {
@@ -152,26 +152,25 @@ impl ToSql for ParsedSearch {
     fn to_sql(&self) -> String {
         match self {
             ParsedSearch::Keyword(keyword) => keyword.to_sql(),
-            ParsedSearch::And(And {
-                items: queries,
-                negated,
-            }) => {
-                let queries = queries
+            ParsedSearch::And(And { items, negated }) | ParsedSearch::Or(Or { items, negated }) => {
+                let queries = items
                     .iter()
                     .map(|query| query.to_sql())
                     .collect::<Vec<_>>()
-                    .join(" AND ");
+                    .join(&format!(
+                        " {} ",
+                        if matches!(self, ParsedSearch::And(_)) {
+                            "AND"
+                        } else {
+                            "OR"
+                        }
+                    ));
                 if *negated {
                     format!("NOT ({queries})", queries = queries)
                 } else {
                     queries
                 }
             }
-            ParsedSearch::Or(queries) => queries
-                .iter()
-                .map(|query| query.to_sql())
-                .collect::<Vec<_>>()
-                .join(" OR "),
         }
     }
 }
