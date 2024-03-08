@@ -4,17 +4,15 @@ pub(crate) mod keyword;
 pub(crate) mod name;
 pub(crate) mod parsed_search;
 pub(crate) mod power_query;
-pub(crate) mod search_keyword;
 pub(crate) mod type_line_query;
 
 use nom_supreme::{error::ErrorTree, final_parser::final_parser};
 
-use self::parsed_search::ParsedSearch;
 pub use self::{
     color_query::{ColorOperator, *},
     name::{Name, *},
+    parsed_search::{ParsedSearch, *},
     power_query::{PowerOperator, *},
-    search_keyword::*,
 };
 
 pub fn search(input: &str) -> Result<ParsedSearch, ErrorTree<&str>> {

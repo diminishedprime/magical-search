@@ -8,9 +8,9 @@ use nom_supreme::{error::ErrorTree, ParserExt};
 
 use super::{
     color::{color, ColorOperand},
+    parsed_search::SearchKeyword,
     ParsedSearch,
 };
-use crate::search::SearchKeyword;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ColorOperator {

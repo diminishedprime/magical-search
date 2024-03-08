@@ -1,8 +1,7 @@
 use nom::{branch::alt, sequence::tuple, IResult, Parser};
 use nom_supreme::{error::ErrorTree, tag::complete::tag_no_case};
 
-use super::{name::quoted_or_until_space, ParsedSearch};
-use crate::search::SearchKeyword;
+use super::{name::quoted_or_until_space, parsed_search::SearchKeyword, ParsedSearch};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeywordQuery {

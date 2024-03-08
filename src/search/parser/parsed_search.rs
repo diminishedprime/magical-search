@@ -8,10 +8,23 @@ use nom::{
 };
 use nom_supreme::{error::ErrorTree, tag::complete::tag, ParserExt};
 
-use super::keyword::keyword_query;
-use crate::search::{
-    color_query, name, power_query, type_line_query::type_line_query, SearchKeyword,
+use super::{
+    keyword::{keyword_query, KeywordQuery},
+    name::Name,
+    type_line_query::TypeLineQuery,
 };
+use crate::search::{
+    color_query, name, power_query, type_line_query::type_line_query, ColorQuery, PowerQuery,
+};
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum SearchKeyword {
+    ColorQuery(ColorQuery),
+    PowerQuery(PowerQuery),
+    Name(Name),
+    TypeLineQuery(TypeLineQuery),
+    Keyword(KeywordQuery),
+}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ParsedSearch {
