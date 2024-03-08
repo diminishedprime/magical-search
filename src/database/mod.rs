@@ -147,6 +147,7 @@ impl Database {
                             .map(|b| b.map(|b| b.0))?,
                     },
                     num_faces: row.get(9)?,
+                    oracle_text: row.get(10)?,
                 })
             })?;
             Ok(card)

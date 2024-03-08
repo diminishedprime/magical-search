@@ -39,12 +39,14 @@ impl Card {
         }
     }
 
+    // TODO - this should probably create from CardInfo instead of a bunch of args.
     pub fn normal_card(
         id: String,
         name: String,
         cmc: Option<f64>,
         image_uri: String,
         image: Option<Bytes>,
+        oracle_text: String,
     ) -> Self {
         Self::Normal(NormalCard {
             id,
@@ -52,6 +54,7 @@ impl Card {
             cmc,
             image,
             image_uri,
+            oracle_text,
         })
     }
 
@@ -110,10 +113,18 @@ impl Card {
                 // TODO - I could handle this more cleanly with a better best_image() / best_uri() function.
                 String::new(),
                 Some(blob.clone()),
+                card_info.oracle_text,
             )
         } else if let Some((uri, _size)) = card_info.best_uri() {
             // let image = Self::get_image(id, uri, size).await?;
-            Card::normal_card(card_info.id, card_info.name, card_info.cmc, uri, None)
+            Card::normal_card(
+                card_info.id,
+                card_info.name,
+                card_info.cmc,
+                uri,
+                None,
+                card_info.oracle_text,
+            )
         } else {
             Card::no_image_card(card_info.id, card_info.name, card_info.cmc)
         };
@@ -151,7 +162,7 @@ impl Card {
                 Card::NoImage(no_image) => no_image.view(),
             })
             .align_x(alignment::Horizontal::Center)
-            .align_y(alignment::Vertical::Center)
+            .align_y(alignment::Vertical::Top)
             .height(height)
             .width(width),
         )

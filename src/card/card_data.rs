@@ -24,6 +24,7 @@ pub struct CardData {
     pub normal: ImageInfo,
     pub large: ImageInfo,
     pub num_faces: usize,
+    pub oracle_text: String,
 }
 
 impl Display for CardData {

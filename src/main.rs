@@ -88,7 +88,7 @@ impl Application for MagicalSearch {
     fn new(_flags: Self::Flags) -> (Self, iced::Command<Self::Message>) {
         (
             MagicalSearch::Loading,
-            Cards::initial_rows_for(Search::default()),
+            Cards::initial_rows_for(Search::from(INITIAL_SEARCH)),
         )
     }
 

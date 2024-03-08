@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use iced::{
-    widget::{column, image::Handle, text, Image},
+    widget::{column, image::Handle, row, text, Image},
     Element,
 };
 
@@ -13,6 +13,7 @@ pub struct NormalCard {
     pub cmc: Option<f64>,
     pub image: Option<Bytes>,
     pub image_uri: String,
+    pub oracle_text: String,
 }
 
 impl NormalCard {
@@ -22,13 +23,18 @@ impl NormalCard {
                 .content_fit(iced::ContentFit::Contain),)
         } else {
             column!(
-                text(&self.name),
-                text(
-                    self.cmc
-                        .map(|cmc| cmc.to_string())
-                        .unwrap_or("".to_string())
-                )
+                row!(text("Name:"), text(&self.name),),
+                row!(
+                    text("cmc:"),
+                    text(
+                        self.cmc
+                            .map(|cmc| cmc.to_string())
+                            .unwrap_or("".to_string())
+                    )
+                ),
+                text(&self.oracle_text)
             )
+            .align_items(iced::Alignment::Start)
         }
         .into()
     }
