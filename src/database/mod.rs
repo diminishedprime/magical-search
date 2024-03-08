@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+pub mod to_sql;
 
 use anyhow::Context;
 use bytes::Bytes;
@@ -8,11 +9,11 @@ use rusqlite::{
     ToSql,
 };
 
+use self::to_sql::{ToSql as _, SQL};
 use crate::{
     card::card_data::{CardData, ImageInfo, ImageSize},
     db::{GET_CARD, WRITE_FACE_SMALL_BLOB, WRITE_LARGE_IMAGE_BLOB, WRITE_SMALL_IMAGE_BLOB},
     search::Search,
-    to_sql::{ToSql as _, SQL},
     CARDS_PER_ROW,
 };
 

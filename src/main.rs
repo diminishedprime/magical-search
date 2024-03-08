@@ -4,7 +4,6 @@ pub(crate) mod cards;
 mod database;
 mod db;
 mod search;
-mod to_sql;
 mod types;
 
 use std::{collections::HashSet, iter};
