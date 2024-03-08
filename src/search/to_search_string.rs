@@ -35,6 +35,7 @@ impl ToSearchString for ParsedSearch {
                 super::SearchKeyword::Name(_) => todo!(),
                 super::SearchKeyword::TypeLineQuery(_) => todo!(),
                 super::SearchKeyword::Keyword(_) => todo!(),
+                super::SearchKeyword::OracleQuery(_) => todo!(),
             },
         }
     }

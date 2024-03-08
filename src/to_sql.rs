@@ -4,8 +4,9 @@ use itertools::Itertools;
 use lazy_static::lazy_static;
 
 use crate::search::{
-    keyword::KeywordQuery, type_line_query::TypeLineQuery, ColorOperator, ColorQuery, Name,
-    ParsedSearch, PowerOperand, PowerOperator, PowerQuery, SearchKeyword,
+    keyword::KeywordQuery, oracle_query::OracleQuery, type_line_query::TypeLineQuery,
+    ColorOperator, ColorQuery, Name, ParsedSearch, PowerOperand, PowerOperator, PowerQuery,
+    SearchKeyword,
 };
 
 lazy_static! {
@@ -202,7 +203,19 @@ impl ToSql for SearchKeyword {
             SearchKeyword::Name(name) => name.to_sql(),
             SearchKeyword::TypeLineQuery(type_line) => type_line.to_sql(),
             SearchKeyword::Keyword(kw) => kw.to_sql(),
+            SearchKeyword::OracleQuery(oq) => oq.to_sql(),
         }
+    }
+}
+
+impl ToSql for OracleQuery {
+    fn to_sql(&self) -> SQL {
+        let like = format!(
+            "cards.oracle_text LIKE '%{oracle_text}%'",
+            oracle_text = self.oracle_text
+        );
+        let _where = format!("({like})", like = like);
+        SQL::new(_where, vec![])
     }
 }
 

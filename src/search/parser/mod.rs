@@ -2,6 +2,7 @@ pub(crate) mod color;
 pub(crate) mod color_query;
 pub(crate) mod keyword;
 pub(crate) mod name;
+pub(crate) mod oracle_query;
 pub(crate) mod parsed_search;
 pub(crate) mod power_query;
 pub(crate) mod type_line_query;

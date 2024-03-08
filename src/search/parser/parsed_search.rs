@@ -11,6 +11,7 @@ use nom_supreme::{error::ErrorTree, tag::complete::tag, ParserExt};
 use super::{
     keyword::{keyword_query, KeywordQuery},
     name::Name,
+    oracle_query::{oracle_query, OracleQuery},
     type_line_query::TypeLineQuery,
 };
 use crate::search::{
@@ -21,6 +22,7 @@ use crate::search::{
 pub enum SearchKeyword {
     ColorQuery(ColorQuery),
     PowerQuery(PowerQuery),
+    OracleQuery(OracleQuery),
     Name(Name),
     TypeLineQuery(TypeLineQuery),
     Keyword(KeywordQuery),
@@ -65,6 +67,7 @@ fn search_keyword(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
         power_query,
         type_line_query,
         keyword_query,
+        oracle_query,
         // Name must be the last parser since it's a bit of a catch-all.
         name,
     ))
