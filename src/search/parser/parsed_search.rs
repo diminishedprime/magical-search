@@ -9,6 +9,7 @@ use nom::{
 use nom_supreme::{error::ErrorTree, tag::complete::tag, ParserExt};
 
 use super::{
+    color_identity_query::{color_identity_query, ColorIdentityQuery},
     keyword::{keyword_query, KeywordQuery},
     name::Name,
     oracle_query::{oracle_query, OracleQuery},
@@ -21,6 +22,7 @@ use crate::search::{
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum SearchKeyword {
     ColorQuery(ColorQuery),
+    ColorIdentityQuery(ColorIdentityQuery),
     PowerQuery(PowerQuery),
     OracleQuery(OracleQuery),
     Name(Name),
@@ -64,6 +66,7 @@ fn negated(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
 fn search_keyword(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
     alt((
         color_query,
+        color_identity_query,
         power_query,
         type_line_query,
         keyword_query,

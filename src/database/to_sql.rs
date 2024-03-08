@@ -4,7 +4,10 @@ use itertools::Itertools;
 use lazy_static::lazy_static;
 
 use crate::search::{
-    keyword::KeywordQuery, oracle_query::OracleQuery, type_line_query::TypeLineQuery,
+    color_identity_query::{ColorIdentityOperator, ColorIdentityQuery},
+    keyword::KeywordQuery,
+    oracle_query::OracleQuery,
+    type_line_query::TypeLineQuery,
     ColorOperator, ColorQuery, Name, ParsedSearch, PowerOperand, PowerOperator, PowerQuery,
     SearchKeyword,
 };
@@ -90,6 +93,103 @@ impl ToSql for PowerQuery {
     }
 }
 
+impl ToSql for ColorIdentityQuery {
+    fn to_sql(&self) -> SQL {
+        let all_colors = ["W", "U", "B", "R", "G"].iter().map(|s| s.to_string());
+        let all_colors_set: HashSet<String> = HashSet::from_iter(all_colors.clone());
+        let colors = HashSet::from_iter(self.operand.as_set());
+        let clauses = match self.operator {
+            ColorIdentityOperator::LessThan => {
+                let positive = colors
+                    .iter()
+                    .sorted()
+                    .map(|color| format!("cards.{color}=TRUE", color = color))
+                    .join(" OR ");
+                let not_all_positive = colors
+                    .iter()
+                    .sorted()
+                    .map(|color| format!("cards.{color}=TRUE", color = color))
+                    .join(" AND ");
+                let not_all_positive = format!(
+                    "NOT ({not_all_positive})",
+                    not_all_positive = not_all_positive
+                );
+                let negative = all_colors_set
+                    .difference(&colors)
+                    .sorted()
+                    .map(|c| format!("cards.{color}=FALSE", color = c))
+                    .join(" AND ");
+                format!(
+                    "({positive}) AND ({not_all_positive}) AND ({negative})",
+                    positive = positive,
+                    not_all_positive = not_all_positive,
+                    negative = negative
+                )
+            }
+            // TODO - check this, not positive.
+            ColorIdentityOperator::LessThanOrEqual | ColorIdentityOperator::Colon => {
+                let positive = colors
+                    .iter()
+                    .sorted()
+                    .map(|color| format!("cards.{color}=TRUE", color = color))
+                    .join(" OR ");
+                let negative = all_colors_set
+                    .difference(&colors)
+                    .sorted()
+                    .map(|c| format!("cards.{color}=FALSE", color = c))
+                    .join(" AND ");
+                format!(
+                    "({positive}) AND ({negative})",
+                    positive = positive,
+                    negative = negative
+                )
+            }
+            ColorIdentityOperator::NotEqual => colors
+                .iter()
+                .sorted()
+                .map(|color| format!("cards.{color}=FALSE", color = color))
+                .join(" AND "),
+            ColorIdentityOperator::Equal => all_colors
+                .sorted()
+                .map(|color| {
+                    if colors.contains(&color) {
+                        format!("cards.{color}=TRUE", color = color)
+                    } else {
+                        format!("cards.{color}=FALSE", color = color)
+                    }
+                })
+                .join(" AND "),
+            ColorIdentityOperator::GreaterThan => {
+                let at_least = colors
+                    .iter()
+                    .sorted()
+                    .map(|color| format!("cards.{color}=TRUE", color = color))
+                    .join(" AND ");
+                let others = all_colors_set
+                    .difference(&colors)
+                    .sorted()
+                    .map(|c| format!("cards.{color}=TRUE", color = c))
+                    .join(" OR ");
+                format!(
+                    "({at_least}) AND ({others})",
+                    at_least = at_least,
+                    others = others
+                )
+            }
+            ColorIdentityOperator::GreaterThanOrEqual => {
+                let at_least = colors
+                    .iter()
+                    .sorted()
+                    .map(|color| format!("cards.{color}=TRUE", color = color))
+                    .join(" AND ");
+                format!("{at_least}", at_least = at_least)
+            }
+        };
+        let _where = format!("{clauses}", clauses = clauses);
+        SQL::new(_where, vec![])
+    }
+}
+
 impl ToSql for ColorQuery {
     fn to_sql(&self) -> SQL {
         let all_colors = ["W", "U", "B", "R", "G"].iter().map(|s| s.to_string());
@@ -124,7 +224,7 @@ impl ToSql for ColorQuery {
                 )
             }
             // TODO - check this, not positive.
-            ColorOperator::LessThanOrEqual | ColorOperator::Colon => {
+            ColorOperator::LessThanOrEqual => {
                 let positive = colors
                     .iter()
                     .sorted()
@@ -173,7 +273,7 @@ impl ToSql for ColorQuery {
                     others = others
                 )
             }
-            ColorOperator::GreaterThanOrEqual => {
+            ColorOperator::GreaterThanOrEqual | ColorOperator::Colon => {
                 let at_least = colors
                     .iter()
                     .sorted()
@@ -204,6 +304,7 @@ impl ToSql for SearchKeyword {
             SearchKeyword::TypeLineQuery(type_line) => type_line.to_sql(),
             SearchKeyword::Keyword(kw) => kw.to_sql(),
             SearchKeyword::OracleQuery(oq) => oq.to_sql(),
+            SearchKeyword::ColorIdentityQuery(ciq) => ciq.to_sql(),
         }
     }
 }

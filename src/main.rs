@@ -252,7 +252,8 @@ impl Application for MagicalSearch {
                         }
                         Command::none()
                     }
-                    Err(_) => todo!("figure out what to do if image loading fails"),
+                    // TODO - Handle not loading images better.
+                    Err(_) => Command::none(),
                 },
             },
         }

@@ -1,4 +1,5 @@
 pub(crate) mod color;
+pub(crate) mod color_identity_query;
 pub(crate) mod color_query;
 pub(crate) mod keyword;
 pub(crate) mod name;
