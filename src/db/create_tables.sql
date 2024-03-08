@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS cards (
     B BOOLEAN DEFAULT 0,
     R BOOLEAN DEFAULT 0,
     G BOOLEAN DEFAULT 0,
-    type_line TEXT
+    type_line TEXT,
+    mana_cost TEXT
 );
 
 CREATE TABLE IF NOT EXISTS card_faces (

@@ -60,6 +60,7 @@ fn add_base_card(tx: &mut Transaction, card: &Card) -> Result<()> {
         ":R": card.is_red(),
         ":G": card.is_green(),
         ":type_line": card.type_line,
+        ":mana_cost": card.mana_cost,
         },
     )?;
     Ok(())

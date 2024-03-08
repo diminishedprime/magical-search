@@ -25,7 +25,8 @@ INSERT OR REPLACE INTO cards (
     B,
     R,
     G,
-    type_line
+    type_line,
+    mana_cost
 ) VALUES (
     :id,
     :name,
@@ -53,5 +54,6 @@ INSERT OR REPLACE INTO cards (
     :B,
     :R,
     :G,
-    :type_line
+    :type_line,
+    :mana_cost
 )
