@@ -9,6 +9,7 @@ mod types;
 
 use std::{collections::HashSet, iter};
 
+use bytes::Bytes;
 use card::Card;
 use cards::Cards;
 use iced::{
@@ -72,6 +73,7 @@ enum Message {
     NextFace { card_id: String },
     SearchInputChanged(String),
     CardLoaded(Result<Card, MessageError>),
+    CardImageLoaded(Result<(String, Bytes), MessageError>),
     CardDetailLoaded(Result<CardDetail, MessageError>),
     Scrolled,
     LoadRow(Result<Vec<String>, MessageError>),
@@ -140,6 +142,19 @@ impl Application for MagicalSearch {
                                         Some(CardDetail::loaded(card.clone()));
                                 }
                                 state.current_cards.contents[current_card_idx] = card;
+                                if let Card::Normal(normal) =
+                                    &state.current_cards.contents[current_card_idx]
+                                {
+                                    if normal.image.is_none() {
+                                        return Command::perform(
+                                            Card::get_image(
+                                                normal.id.clone(),
+                                                normal.image_uri.clone(),
+                                            ),
+                                            Message::CardImageLoaded,
+                                        );
+                                    }
+                                }
                             };
                         }
                         Err(e) => {
@@ -226,6 +241,20 @@ impl Application for MagicalSearch {
                         Command::none()
                     }
                 }
+                Message::CardImageLoaded(r) => match r {
+                    Ok((id, blob)) => {
+                        for card in &mut state.current_cards.contents {
+                            if card.id() == id {
+                                if let Card::Normal(normal) = card {
+                                    normal.image = Some(blob);
+                                    break;
+                                }
+                            }
+                        }
+                        Command::none()
+                    }
+                    Err(_) => todo!("figure out what to do if image loading fails"),
+                },
             },
         }
     }

@@ -39,12 +39,19 @@ impl Card {
         }
     }
 
-    pub fn normal_card(id: String, name: String, cmc: Option<f64>, image: Bytes) -> Self {
+    pub fn normal_card(
+        id: String,
+        name: String,
+        cmc: Option<f64>,
+        image_uri: String,
+        image: Option<Bytes>,
+    ) -> Self {
         Self::Normal(NormalCard {
             id,
             name,
             cmc,
             image,
+            image_uri,
         })
     }
 
@@ -95,11 +102,18 @@ impl Card {
                 card_info.num_faces,
             ));
         };
-        let card = if let Some((blob, _)) = card_info.best_image() {
-            Card::normal_card(card_info.id, card_info.name, card_info.cmc, blob)
-        } else if let Some((uri, size)) = card_info.best_uri() {
-            let image = Self::get_image(id, uri, size).await?;
-            Card::normal_card(card_info.id, card_info.name, card_info.cmc, image)
+        let card = if let Some((ref blob, _)) = card_info.best_image() {
+            Card::normal_card(
+                card_info.id,
+                card_info.name,
+                card_info.cmc,
+                // TODO - I could handle this more cleanly with a better best_image() / best_uri() function.
+                String::new(),
+                Some(blob.clone()),
+            )
+        } else if let Some((uri, _size)) = card_info.best_uri() {
+            // let image = Self::get_image(id, uri, size).await?;
+            Card::normal_card(card_info.id, card_info.name, card_info.cmc, uri, None)
         } else {
             Card::no_image_card(card_info.id, card_info.name, card_info.cmc)
         };
@@ -145,10 +159,20 @@ impl Card {
         .into()
     }
 
-    async fn get_image(id: String, url: String, size: ImageSize) -> Result<Bytes, MessageError> {
+    pub async fn get_image(
+        id: String,
+        url: String,
+        // size: ImageSize,
+    ) -> Result<(String, Bytes), MessageError> {
+        // TODO - I should handle this better.
+        let size = ImageSize::Small;
         let image = download_image(url).await?;
-        spawn(Database::write_card_image_blob(id, size, image.clone()));
-        Ok(image)
+        spawn(Database::write_card_image_blob(
+            id.clone(),
+            size,
+            image.clone(),
+        ));
+        Ok((id, image))
     }
 
     async fn ensure_face_image(
