@@ -1,19 +1,67 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Mutex};
 
 use itertools::Itertools;
+use lazy_static::lazy_static;
 
 use crate::search::{
-    type_line_query::TypeLineQuery, ColorOperator, ColorQuery, Name, ParsedSearch, PowerOperand,
-    PowerOperator, PowerQuery, SearchKeyword,
+    keyword::KeywordQuery, type_line_query::TypeLineQuery, ColorOperator, ColorQuery, Name,
+    ParsedSearch, PowerOperand, PowerOperator, PowerQuery, SearchKeyword,
 };
 
-pub trait ToSql {
-    fn to_sql(&self) -> String;
+lazy_static! {
+    // Define a static Mutex-protected counter
+    static ref COUNTER: Mutex<usize> = Mutex::new(0);
 }
 
-impl ToSql for PowerOperator {
-    fn to_sql(&self) -> String {
-        match self {
+// Generate a unique table name
+fn generate_table_name() -> String {
+    let mut counter = COUNTER.lock().unwrap();
+    let table_name = format!("t_{}", *counter);
+    *counter += 1;
+    table_name
+}
+pub struct SQL {
+    where_clauses: String,
+    join_clauses: Vec<String>,
+}
+
+impl Default for SQL {
+    fn default() -> Self {
+        SQL {
+            where_clauses: "".to_string(),
+            join_clauses: vec![],
+        }
+    }
+}
+
+impl SQL {
+    pub fn new(where_clauses: String, join_clauses: Vec<String>) -> Self {
+        SQL {
+            where_clauses,
+            join_clauses,
+        }
+    }
+
+    pub fn joins(&self) -> String {
+        self.join_clauses.join("\n")
+    }
+
+    pub fn wheres(&self) -> String {
+        if self.where_clauses.is_empty() {
+            "".to_string()
+        } else {
+            format!("WHERE {}", self.where_clauses)
+        }
+    }
+}
+
+pub trait ToSql {
+    fn to_sql(&self) -> SQL;
+}
+
+impl ToSql for PowerQuery {
+    fn to_sql(&self) -> SQL {
+        let operator = match self.operator {
             PowerOperator::LessThan => "<",
             PowerOperator::LessThanOrEqual => "<=",
             PowerOperator::NotEqual => "!=",
@@ -22,38 +70,27 @@ impl ToSql for PowerOperator {
             PowerOperator::GreaterThan => ">",
             PowerOperator::GreaterThanOrEqual => ">=",
         }
-        .to_string()
-    }
-}
-
-impl ToSql for PowerQuery {
-    fn to_sql(&self) -> String {
+        .to_string();
         let clauses = match &self.operand {
             PowerOperand::Number(num) => {
-                format!(
-                    "cards.power{operator}{num}",
-                    operator = self.operator.to_sql(),
-                    num = num
-                )
+                format!("cards.power{operator}{num}", operator = operator, num = num)
             }
             PowerOperand::Tougness => {
-                format!(
-                    "cards.power{operator}cards.toughness",
-                    operator = self.operator.to_sql()
-                )
+                format!("cards.power{operator}cards.toughness", operator = operator,)
             }
         };
 
-        format!(
+        let _where = format!(
             "{negated}({clauses})",
             clauses = clauses,
             negated = if self.negated { " NOT " } else { "" }
-        )
+        );
+        SQL::new(_where, vec![])
     }
 }
 
 impl ToSql for ColorQuery {
-    fn to_sql(&self) -> String {
+    fn to_sql(&self) -> SQL {
         let all_colors = ["W", "U", "B", "R", "G"].iter().map(|s| s.to_string());
         let all_colors_set: HashSet<String> = HashSet::from_iter(all_colors.clone());
         let colors = HashSet::from_iter(self.operand.as_set());
@@ -144,72 +181,97 @@ impl ToSql for ColorQuery {
                 format!("{at_least}", at_least = at_least)
             }
         };
-        format!("{clauses}", clauses = clauses)
+        let _where = format!("{clauses}", clauses = clauses);
+        SQL::new(_where, vec![])
     }
 }
 
 impl ToSql for Name {
-    fn to_sql(&self) -> String {
+    fn to_sql(&self) -> SQL {
         let like = format!("cards.name LIKE '%{name}%'", name = self.text);
-        format!("({like})", like = like)
+        let _where = format!("({like})", like = like);
+        SQL::new(_where, vec![])
     }
 }
 
 impl ToSql for SearchKeyword {
-    fn to_sql(&self) -> String {
+    fn to_sql(&self) -> SQL {
         match self {
             SearchKeyword::ColorQuery(color) => color.to_sql(),
             SearchKeyword::PowerQuery(power) => power.to_sql(),
             SearchKeyword::Name(name) => name.to_sql(),
             SearchKeyword::TypeLineQuery(type_line) => type_line.to_sql(),
+            SearchKeyword::Keyword(kw) => kw.to_sql(),
         }
     }
 }
 
+impl ToSql for KeywordQuery {
+    fn to_sql(&self) -> SQL {
+        let alias = generate_table_name();
+        let _join = vec![format!(
+            "LEFT JOIN card_keywords {alias} ON cards.id = {alias}.card_id",
+            alias = alias,
+        )];
+        let _where = format!(
+            "{alias}.keyword LIKE '%{keyword}%'",
+            keyword = self.keyword,
+            alias = alias
+        );
+        SQL::new(_where, _join)
+    }
+}
+
 impl ToSql for ParsedSearch {
-    fn to_sql(&self) -> String {
+    fn to_sql(&self) -> SQL {
         match self {
             ParsedSearch::Keyword(keyword) => keyword.to_sql(),
-            ParsedSearch::And(operands) | ParsedSearch::Or(operands) => operands
-                .iter()
-                .map(|query| query.to_sql())
-                .collect::<Vec<_>>()
-                .join(&format!(
-                    " {} ",
-                    if matches!(self, ParsedSearch::And(_)) {
-                        "AND"
-                    } else {
-                        "OR"
-                    }
-                )),
-            ParsedSearch::Negated(negated, search) => format!(
-                "{negated}({search})",
-                negated = if *negated { "NOT " } else { "" },
-                search = search.to_sql()
-            ),
+            ParsedSearch::And(operands) | ParsedSearch::Or(operands) => {
+                let sqls = operands
+                    .iter()
+                    .map(|query| query.to_sql())
+                    .collect::<Vec<_>>();
+                let _where = sqls
+                    .iter()
+                    .map(|sql| sql.where_clauses.clone())
+                    .collect::<Vec<_>>()
+                    .join(&format!(
+                        " {} ",
+                        if matches!(self, ParsedSearch::And(_)) {
+                            "AND"
+                        } else {
+                            "OR"
+                        }
+                    ));
+                let _join = sqls
+                    .iter()
+                    .map(|sql| sql.join_clauses.clone())
+                    .flatten()
+                    .collect();
+                SQL::new(_where, _join)
+            }
+            ParsedSearch::Negated(negated, search) => {
+                let sql = search.to_sql();
+                let _where = format!(
+                    "{negated}({search})",
+                    negated = if *negated { "NOT " } else { "" },
+                    search = sql.where_clauses
+                );
+                SQL::new(_where, sql.join_clauses)
+            }
         }
     }
 }
 
 impl ToSql for TypeLineQuery {
-    fn to_sql(&self) -> String {
+    fn to_sql(&self) -> SQL {
         // TODO - I need to clean up this whole thing since this allows for the
         // potential of sql injection. Instead of returning String, I need to
         // return some sort of IntoClause trait or something similar that can
         // include the information on any parameters that need to be passed in.
         let clauses = format!("cards.type_line LIKE '%{}%'", self.operand);
-        format!("({clauses})", clauses = clauses)
-    }
-}
-
-impl ParsedSearch {
-    pub fn to_clauses(&self) -> String {
-        let clauses = self.to_sql();
-        if !clauses.trim().is_empty() {
-            format!(r"WHERE {}", clauses).trim().to_string()
-        } else {
-            clauses
-        }
+        let _where = format!("({clauses})", clauses = clauses);
+        SQL::new(_where, vec![])
     }
 }
 
@@ -221,7 +283,7 @@ mod tests {
     #[test]
     pub fn equals_esper() {
         let search = search::search("c=ESPER").unwrap();
-        let actual = search.to_sql();
+        let actual = search.to_sql().where_clauses;
         let expected =
             "(cards.B=TRUE AND cards.G=FALSE AND cards.R=FALSE AND cards.U=TRUE AND cards.W=TRUE)";
         assert_eq!(actual, expected)
@@ -230,7 +292,7 @@ mod tests {
     #[test]
     pub fn not_equals_esper() {
         let search = search::search("c!=ESPER").unwrap();
-        let actual = search.to_sql();
+        let actual = search.to_sql().where_clauses;
         let expected = "(cards.B=FALSE AND cards.U=FALSE AND cards.W=FALSE)";
         assert_eq!(actual, expected)
     }
@@ -238,7 +300,7 @@ mod tests {
     #[test]
     pub fn not_esper_and_not_golgari() {
         let search = search::search("c!=ESPER c!=GOLGARI").unwrap();
-        let actual = search.to_sql();
+        let actual = search.to_sql().where_clauses;
         let expected = "(cards.B=FALSE AND cards.U=FALSE AND cards.W=FALSE) AND (cards.B=FALSE AND cards.G=FALSE)";
         assert_eq!(actual, expected);
     }
@@ -246,7 +308,7 @@ mod tests {
     #[test]
     pub fn other_greater_or_equal_esper() {
         let search = search::search("c>=ESPER").unwrap();
-        let actual = search.to_sql();
+        let actual = search.to_sql().where_clauses;
         let expected = "(cards.B=TRUE AND cards.U=TRUE AND cards.W=TRUE)";
         assert_eq!(actual, expected)
     }
@@ -254,7 +316,7 @@ mod tests {
     #[test]
     pub fn less_than_or_equal_esper() {
         let search = search::search("c<=ESPER").unwrap();
-        let actual = search.to_sql();
+        let actual = search.to_sql().where_clauses;
         let expected = "((cards.B=TRUE OR cards.U=TRUE OR cards.W=TRUE) AND (cards.G=FALSE AND cards.R=FALSE))";
         assert_eq!(actual, expected)
     }
@@ -262,7 +324,7 @@ mod tests {
     #[test]
     pub fn other_less_than_or_equal_esper() {
         let search = search::search("c:ESPER").unwrap();
-        let actual = search.to_sql();
+        let actual = search.to_sql().where_clauses;
         let expected =
             "((cards.B=TRUE OR cards.U=TRUE OR cards.W=TRUE) AND (cards.G=FALSE AND cards.R=FALSE))";
         assert_eq!(actual, expected)
@@ -271,7 +333,7 @@ mod tests {
     #[test]
     pub fn less_than_esper() {
         let search = search::search("c<ESPER").unwrap();
-        let actual = search.to_sql();
+        let actual = search.to_sql().where_clauses;
         let expected = "((cards.B=TRUE OR cards.U=TRUE OR cards.W=TRUE) AND (NOT (cards.B=TRUE AND cards.U=TRUE AND cards.W=TRUE)) AND (cards.G=FALSE AND cards.R=FALSE))";
         assert_eq!(actual, expected)
     }
@@ -279,7 +341,7 @@ mod tests {
     #[test]
     pub fn equals_esper_and_power_equals_touhgness() {
         let search = search::search("c=ESPER pow=toughness").unwrap();
-        let actual = search.to_sql();
+        let actual = search.to_sql().where_clauses;
         let expected = "(cards.B=TRUE AND cards.G=FALSE AND cards.R=FALSE AND cards.U=TRUE AND cards.W=TRUE) AND ((cards.power=cards.toughness))";
         assert_eq!(actual, expected)
     }

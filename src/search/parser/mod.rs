@@ -1,5 +1,6 @@
 pub(crate) mod color;
 pub(crate) mod color_query;
+pub(crate) mod keyword;
 pub(crate) mod name;
 pub(crate) mod parsed_search;
 pub(crate) mod power_query;

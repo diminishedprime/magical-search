@@ -8,6 +8,7 @@ use nom::{
 };
 use nom_supreme::{error::ErrorTree, tag::complete::tag, ParserExt};
 
+use super::keyword::keyword_query;
 use crate::search::{
     color_query, name, power_query, type_line_query::type_line_query, SearchKeyword,
 };
@@ -50,6 +51,7 @@ fn search_keyword(input: &str) -> IResult<&str, ParsedSearch, ErrorTree<&str>> {
         color_query,
         power_query,
         type_line_query,
+        keyword_query,
         // Name must be the last parser since it's a bit of a catch-all.
         name,
     ))

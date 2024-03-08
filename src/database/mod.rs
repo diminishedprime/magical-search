@@ -12,6 +12,7 @@ use crate::{
     card::card_data::{CardData, ImageInfo, ImageSize},
     db::{GET_CARD, WRITE_FACE_SMALL_BLOB, WRITE_LARGE_IMAGE_BLOB, WRITE_SMALL_IMAGE_BLOB},
     search::Search,
+    to_sql::{ToSql as _, SQL},
     CARDS_PER_ROW,
 };
 
@@ -29,16 +30,18 @@ impl Database {
         cursor: usize,
         search: Search,
     ) -> Result<Vec<String>, anyhow::Error> {
-        println!("Search: {:?}", search);
         let conn = Database::connection().await?;
         conn.call(move |conn| {
+            let s = search
+                .parsed_search
+                .map(|s| s.to_sql())
+                .unwrap_or(SQL::default());
             let sql = format!(
                 include_str!("get_ids_with_clauses.sql"),
-                clauses = search
-                    .parsed_search
-                    .map(|s| s.to_clauses())
-                    .unwrap_or(String::new()) // clauses = search.to_clauses()
+                joins = s.joins(),
+                clauses = s.wheres()
             );
+            // println!("{}", sql);
             let mut stmt = conn.prepare(&sql)?;
             let card_ids = stmt
                 .query_map(&[(":cursor", &cursor), (":limit", &CARDS_PER_ROW)], |row| {

@@ -34,6 +34,7 @@ impl ToSearchString for ParsedSearch {
                 super::SearchKeyword::PowerQuery(_) => todo!(),
                 super::SearchKeyword::Name(_) => todo!(),
                 super::SearchKeyword::TypeLineQuery(_) => todo!(),
+                super::SearchKeyword::Keyword(_) => todo!(),
             },
         }
     }
