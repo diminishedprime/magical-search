@@ -77,7 +77,7 @@ mod tests {
 
     #[test]
     fn test_color_identity_query_lt_red() {
-        let (_, actual) = color_identity_query("c<red").unwrap();
+        let (_, actual) = color_identity_query("id<red").unwrap();
         assert_eq!(
             actual,
             ParsedSearch::color_identity_query(ColorIdentityQuery::new(
@@ -89,7 +89,7 @@ mod tests {
 
     #[test]
     fn test_color_identity_query_lte_green() {
-        let (_, actual) = color_identity_query("color<=green").unwrap();
+        let (_, actual) = color_identity_query("identity<=green").unwrap();
         assert_eq!(
             actual,
             ParsedSearch::color_identity_query(ColorIdentityQuery::new(
@@ -101,7 +101,7 @@ mod tests {
 
     #[test]
     fn test_color_identity_query_gte_green_2() {
-        let (_, actual) = color_identity_query("color:green").unwrap();
+        let (_, actual) = color_identity_query("identity:green").unwrap();
         assert_eq!(
             actual,
             ParsedSearch::color_identity_query(ColorIdentityQuery::new(
@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_color_identity_query_is_blue() {
-        let (_, actual) = color_identity_query("c=blue").unwrap();
+        let (_, actual) = color_identity_query("id=blue").unwrap();
         assert_eq!(
             actual,
             ParsedSearch::color_identity_query(ColorIdentityQuery::new(
@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn test_color_identity_query_gt_black() {
-        let (_, actual) = color_identity_query("color>black").unwrap();
+        let (_, actual) = color_identity_query("identity>black").unwrap();
         assert_eq!(
             actual,
             ParsedSearch::color_identity_query(ColorIdentityQuery::new(
@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn test_color_identity_query_gte_white() {
-        let (_, actual) = color_identity_query("c>=white").unwrap();
+        let (_, actual) = color_identity_query("identity>=white").unwrap();
         assert_eq!(
             actual,
             ParsedSearch::color_identity_query(ColorIdentityQuery::new(

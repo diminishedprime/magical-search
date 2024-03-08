@@ -57,6 +57,12 @@ impl ColorOperand {
     pub fn as_vec(&self) -> Vec<String> {
         self.to_string().chars().map(|c| c.to_string()).collect()
     }
+    pub fn all_colors() -> Vec<String> {
+        ["W", "U", "B", "R", "G"]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect()
+    }
     fn order(&self) -> usize {
         match self {
             ColorOperand::White => 0,

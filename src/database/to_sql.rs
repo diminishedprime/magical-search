@@ -4,6 +4,7 @@ use itertools::Itertools;
 use lazy_static::lazy_static;
 
 use crate::search::{
+    color::ColorOperand,
     color_identity_query::{ColorIdentityOperator, ColorIdentityQuery},
     keyword::KeywordQuery,
     oracle_query::OracleQuery,
@@ -95,7 +96,7 @@ impl ToSql for PowerQuery {
 
 impl ToSql for ColorIdentityQuery {
     fn to_sql(&self) -> SQL {
-        let all_colors = ["W", "U", "B", "R", "G"].iter().map(|s| s.to_string());
+        let all_colors = ColorOperand::all_colors().into_iter();
         let all_colors_set: HashSet<String> = HashSet::from_iter(all_colors.clone());
         let colors = HashSet::from_iter(self.operand.as_set());
         let clauses = match self.operator {
@@ -192,7 +193,7 @@ impl ToSql for ColorIdentityQuery {
 
 impl ToSql for ColorQuery {
     fn to_sql(&self) -> SQL {
-        let all_colors = ["W", "U", "B", "R", "G"].iter().map(|s| s.to_string());
+        let all_colors = ColorOperand::all_colors().into_iter();
         let all_colors_set: HashSet<String> = HashSet::from_iter(all_colors.clone());
         let colors = HashSet::from_iter(self.operand.as_set());
         let clauses = match self.operator {
@@ -439,8 +440,7 @@ mod tests {
     pub fn other_less_than_or_equal_esper() {
         let search = search::search("c:ESPER").unwrap();
         let actual = search.to_sql().where_clauses;
-        let expected =
-            "((cards.B=TRUE OR cards.U=TRUE OR cards.W=TRUE) AND (cards.G=FALSE AND cards.R=FALSE))";
+        let expected = "(cards.B=TRUE AND cards.U=TRUE AND cards.W=TRUE)";
         assert_eq!(actual, expected)
     }
 
