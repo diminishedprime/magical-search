@@ -384,9 +384,13 @@ impl ToSql for TypeLineQuery {
         // potential of sql injection. Instead of returning String, I need to
         // return some sort of IntoClause trait or something similar that can
         // include the information on any parameters that need to be passed in.
-        let clauses = format!("cards.type_line LIKE '%{}%'", self.operand);
-        let _where = format!("({clauses})", clauses = clauses);
-        SQL::new(_where, vec![])
+        if self.operand.is_empty() {
+            SQL::default()
+        } else {
+            let clauses = format!("cards.type_line LIKE '%{}%'", self.operand);
+            let _where = format!("({clauses})", clauses = clauses);
+            SQL::new(_where, vec![])
+        }
     }
 }
 

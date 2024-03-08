@@ -27,23 +27,27 @@ impl Database {
         tokio_rusqlite::Connection::open(Database::path()).await
     }
 
+    fn fetch_card_ids_sql(search: Search) -> String {
+        let s = search
+            .parsed_search
+            .map(|s| s.to_sql())
+            .unwrap_or(SQL::default());
+        let sql = format!(
+            include_str!("get_ids_with_clauses.sql"),
+            joins = s.joins(),
+            clauses = s.wheres()
+        );
+        // println!("{}", sql);
+        sql
+    }
+
     pub async fn fetch_card_ids(
         cursor: usize,
         search: Search,
     ) -> Result<Vec<String>, anyhow::Error> {
         let conn = Database::connection().await?;
         conn.call(move |conn| {
-            let s = search
-                .parsed_search
-                .map(|s| s.to_sql())
-                .unwrap_or(SQL::default());
-            let sql = format!(
-                include_str!("get_ids_with_clauses.sql"),
-                joins = s.joins(),
-                clauses = s.wheres()
-            );
-            // println!("{}", sql);
-            let mut stmt = conn.prepare(&sql)?;
+            let mut stmt = conn.prepare(&Self::fetch_card_ids_sql(search))?;
             let card_ids = stmt
                 .query_map(&[(":cursor", &cursor), (":limit", &CARDS_PER_ROW)], |row| {
                     let id: String = row.get(0)?;
@@ -170,5 +174,19 @@ impl FromSql for BytesWrapper {
 impl ToSql for BytesWrapper {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
         Ok(ToSqlOutput::Borrowed(ValueRef::Blob(&self.0)))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::search::Search;
+
+    #[test]
+    fn empty_typeline_does_not_show_up() {
+        let actual = super::Database::fetch_card_ids_sql(Search::from("t:"));
+        assert!(
+            !actual.contains("cards.type_line LIKE"),
+            "An empty typeline shouldn't influence the query."
+        );
     }
 }
