@@ -25,6 +25,8 @@ fn generate_table_name() -> String {
     *counter += 1;
     table_name
 }
+
+#[derive(Debug)]
 pub struct SQL {
     where_clauses: String,
     join_clauses: Vec<String>,
@@ -151,6 +153,14 @@ impl ColorIdentityQuery {
             format!("NOT ({other_colors_true_and})")
         }
     }
+    fn not_other_colors_true_or(&self) -> String {
+        let other_colors_true_and = self.other_colors_true_or();
+        if other_colors_true_and.is_empty() {
+            "".to_string()
+        } else {
+            format!("NOT ({other_colors_true_and})")
+        }
+    }
     fn difference_false(&self) -> Vec<String> {
         let my_colors = self.operand.as_set();
         let all_colors_set = ColorOperand::all_colors_set();
@@ -205,9 +215,9 @@ impl ColorIdentityQuery {
     // W AND U AND B
     fn color_identity_equal(&self) -> String {
         once(self.colors_true_and())
-            .chain(once(self.not_other_colors_true_and()))
+            .chain(once(self.not_other_colors_true_or()))
             .filter(|s| !s.is_empty())
-            .join(" ")
+            .join(" AND ")
     }
 
     // Greater than a color identity for the example of esper means
@@ -557,7 +567,7 @@ mod tests {
     fn id_esper_equal() {
         let actual = search::search("id=esper").unwrap().to_sql().where_clauses;
         let expected =
-            "cards.B=TRUE AND cards.U=TRUE AND cards.W=TRUE NOT (cards.G=TRUE AND cards.R=TRUE)";
+            "cards.B=TRUE AND cards.U=TRUE AND cards.W=TRUE AND NOT (cards.G=TRUE OR cards.R=TRUE)";
         assert_eq!(actual, expected);
     }
     #[test]
@@ -629,6 +639,14 @@ mod tests {
         // will add more colors.
         let expected =
             "cards.B=TRUE AND cards.G=TRUE AND cards.R=TRUE AND cards.U=TRUE AND cards.W=TRUE";
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn id_rakdos_equal() {
+        let actual = search::search("id=rakdos").unwrap().to_sql().where_clauses;
+        let expected =
+            "cards.B=TRUE AND cards.R=TRUE AND NOT (cards.G=TRUE OR cards.U=TRUE OR cards.W=TRUE)";
         assert_eq!(actual, expected);
     }
 }

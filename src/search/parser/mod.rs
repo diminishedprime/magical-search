@@ -45,6 +45,18 @@ impl From<&str> for Search {
     }
 }
 
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn basic_parsable_search() {
+        Search::from("id=rakdos t:creature")
+            .parsed_search
+            .expect("Should parse successfully.");
+    }
+}
+
 // and cards that are a certain color identity using the id: or identity:
 // keywords.
 
