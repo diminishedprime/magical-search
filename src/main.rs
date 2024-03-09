@@ -8,7 +8,6 @@ mod types;
 
 use std::{collections::HashSet, iter};
 
-use bytes::Bytes;
 use card::Card;
 use cards::Cards;
 use iced::{
@@ -24,7 +23,7 @@ use thiserror::Error;
 
 use crate::card_detail::CardDetail;
 
-static INITIAL_SEARCH: &str = "";
+static INITIAL_SEARCH: &str = r#""#;
 
 use once_cell::sync::Lazy;
 
@@ -60,8 +59,6 @@ enum AppError {
 
 #[derive(Debug, Clone, thiserror::Error)]
 enum MessageError {
-    #[error("Failed to connect to local database")]
-    SQLConnection,
     #[error("Fail to query successfully")]
     SQLQuery,
 }
@@ -72,7 +69,6 @@ enum Message {
     NextFace { card_id: String },
     SearchInputChanged(String),
     CardLoaded(Result<Card, MessageError>),
-    CardImageLoaded(Result<(String, Bytes), MessageError>),
     CardDetailLoaded(Result<CardDetail, MessageError>),
     Scrolled,
     LoadRow(Result<Vec<String>, MessageError>),
@@ -141,18 +137,19 @@ impl Application for MagicalSearch {
                                         Some(CardDetail::loaded(card.clone()));
                                 }
                                 state.current_cards.contents[current_card_idx] = card;
-                                if let Card::Normal(normal) =
+                                if let Card::Normal(_normal) =
                                     &state.current_cards.contents[current_card_idx]
                                 {
-                                    if normal.image.is_none() {
-                                        return Command::perform(
-                                            Card::get_image(
-                                                normal.id.clone(),
-                                                normal.image_uri.clone(),
-                                            ),
-                                            Message::CardImageLoaded,
-                                        );
-                                    }
+                                    // // TODO
+                                    // if normal.image().is_none() {
+                                    //     return Command::perform(
+                                    //         Card::get_image_action(
+                                    //             normal.id().to_string(),
+                                    //             normal.uri().unwrap(),
+                                    //         ),
+                                    //         Message::CardImageLoaded,
+                                    //     );
+                                    // }
                                 }
                             };
                         }
@@ -240,21 +237,6 @@ impl Application for MagicalSearch {
                         Command::none()
                     }
                 }
-                Message::CardImageLoaded(r) => match r {
-                    Ok((id, blob)) => {
-                        for card in &mut state.current_cards.contents {
-                            if card.id() == id {
-                                if let Card::Normal(normal) = card {
-                                    normal.image = Some(blob);
-                                    break;
-                                }
-                            }
-                        }
-                        Command::none()
-                    }
-                    // TODO - Handle not loading images better.
-                    Err(_) => Command::none(),
-                },
             },
         }
     }

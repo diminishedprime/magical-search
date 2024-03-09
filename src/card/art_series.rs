@@ -20,10 +20,10 @@ impl ArtSeries {
         match &self.face {
             Some(image) => {
                 column!(
-                    Image::new(Handle::from_memory(image.clone())),
-                    button("Next face").on_press(Message::NextFace {
+                    button("Other face").on_press(Message::NextFace {
                         card_id: self.id.clone()
                     }),
+                    Image::new(Handle::from_memory(image.clone())),
                 )
             }
             None => column!(text("No image for this face.")),

@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS cards (
     R BOOLEAN DEFAULT 0,
     G BOOLEAN DEFAULT 0,
     type_line TEXT,
-    mana_cost TEXT
+    mana_cost TEXT,
+    image BLOB
 );
 
 CREATE TABLE IF NOT EXISTS card_faces (
@@ -57,6 +58,7 @@ CREATE TABLE IF NOT EXISTS card_faces (
     B BOOLEAN DEFAULT 0,
     R BOOLEAN DEFAULT 0,
     G BOOLEAN DEFAULT 0,
+    image BLOB,
     PRIMARY KEY (card_id, face_index),
     FOREIGN KEY (card_id) REFERENCES cards(id)
 );
@@ -69,17 +71,6 @@ CREATE TABLE IF NOT EXISTS card_image_uris (
     png TEXT,
     art_crop TEXT,
     border_crop TEXT,
-    FOREIGN KEY (card_id) REFERENCES cards(id)
-);
-
-CREATE TABLE IF NOT EXISTS card_image_blobs (
-    card_id TEXT UNIQUE,
-    small BLOB,
-    normal BLOB,
-    large BLOB,
-    png BLOB,
-    art_crop BLOB,
-    border_crop BLOB,
     FOREIGN KEY (card_id) REFERENCES cards(id)
 );
 
@@ -104,17 +95,5 @@ CREATE TABLE IF NOT EXISTS card_faces_image_uris (
     png TEXT,
     art_crop TEXT,
     border_crop TEXT,
-    FOREIGN KEY (card_id, face_index) REFERENCES card_faces(card_id, face_index)
-);
-
-CREATE TABLE IF NOT EXISTS card_faces_image_blobs (
-    card_id TEXT,
-    face_index INTEGER,
-    small BLOB,
-    normal BLOB,
-    large BLOB,
-    png BLOB,
-    art_crop BLOB,
-    border_crop BLOB,
     FOREIGN KEY (card_id, face_index) REFERENCES card_faces(card_id, face_index)
 );

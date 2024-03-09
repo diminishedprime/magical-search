@@ -63,6 +63,10 @@ impl ColorOperand {
             .map(|s| s.to_string())
             .collect()
     }
+
+    pub fn all_colors_set() -> HashSet<String> {
+        HashSet::from_iter(Self::all_colors().into_iter())
+    }
     fn order(&self) -> usize {
         match self {
             ColorOperand::White => 0,

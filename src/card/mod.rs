@@ -10,17 +10,12 @@ use iced::{
     widget::{button, container},
     Command, Element,
 };
-use tokio::spawn;
 
 use self::{
-    art_series::ArtSeries, card_data::ImageSize, loading::LoadingCard, no_image::NoImageCard,
+    art_series::ArtSeries, card_data::GetCardDataInfo, loading::LoadingCard, no_image::NoImageCard,
     normal::NormalCard,
 };
-use crate::{
-    database::{BytesWrapper, Database},
-    db::GET_CARD_FACE,
-    Message, MessageError,
-};
+use crate::{database::Database, Message, MessageError};
 
 #[derive(Debug, Clone)]
 pub enum Card {
@@ -37,25 +32,6 @@ impl Card {
         } else {
             Command::none()
         }
-    }
-
-    // TODO - this should probably create from CardInfo instead of a bunch of args.
-    pub fn normal_card(
-        id: String,
-        name: String,
-        cmc: Option<f64>,
-        image_uri: String,
-        image: Option<Bytes>,
-        oracle_text: String,
-    ) -> Self {
-        Self::Normal(NormalCard {
-            id,
-            name,
-            cmc,
-            image,
-            image_uri,
-            oracle_text,
-        })
     }
 
     pub fn no_image_card(id: String, name: String, cmc: Option<f64>) -> Self {
@@ -84,7 +60,7 @@ impl Card {
 
     pub fn id(&self) -> String {
         match self {
-            Card::Normal(normal) => normal.id.clone(),
+            Card::Normal(normal) => normal.id().to_string(),
             Card::ArtSeries(art_series) => art_series.id.clone(),
             Card::Loading(LoadingCard { id, .. }) => id.clone(),
             Card::NoImage(no_image) => no_image.id.clone(),
@@ -92,11 +68,15 @@ impl Card {
     }
 
     pub async fn get_card(id: String) -> Result<Card, MessageError> {
-        let card_info = Database::get_card_info(id.clone())
+        let card_info = Database::get_card_data(id.clone())
             .await
-            .map_err(|_| MessageError::SQLQuery)?;
+            .expect("Couldn't get card info from db.");
+        // .map_err(|_| MessageError::SQLQuery)?;
         if card_info.num_faces > 0 {
-            let face = Self::get_card_face(card_info.id.clone(), 0).await?;
+            let face = Database::get_card_face(card_info.id.clone(), 0)
+                .await
+                .expect("failed to get card from db");
+            // .map_err(|_| MessageError::SQLQuery)?;
             return Ok(Card::art_series(
                 card_info.id,
                 card_info.name,
@@ -105,34 +85,19 @@ impl Card {
                 card_info.num_faces,
             ));
         };
-        let card = if let Some((ref blob, _)) = card_info.best_image() {
-            Card::normal_card(
-                card_info.id,
-                card_info.name,
-                card_info.cmc,
-                // TODO - I could handle this more cleanly with a better best_image() / best_uri() function.
-                String::new(),
-                Some(blob.clone()),
-                card_info.oracle_text,
-            )
-        } else if let Some((uri, _size)) = card_info.best_uri() {
-            // let image = Self::get_image(id, uri, size).await?;
-            Card::normal_card(
-                card_info.id,
-                card_info.name,
-                card_info.cmc,
-                uri,
-                None,
-                card_info.oracle_text,
-            )
+        let card = if card_info.has_image() {
+            Card::Normal(NormalCard::from(card_info))
         } else {
             Card::no_image_card(card_info.id, card_info.name, card_info.cmc)
         };
         Ok(card)
     }
 
-    pub async fn next_card_face(id: String, current_face: usize) -> Result<Card, MessageError> {
-        let card_info = Database::get_card_info(id.clone())
+    pub async fn next_card_face(
+        card_id: String,
+        current_face: usize,
+    ) -> Result<Card, MessageError> {
+        let card_info = Database::get_card_data(card_id.clone())
             .await
             .map_err(|_| MessageError::SQLQuery)?;
         let next_face = if current_face + 1 < card_info.num_faces {
@@ -140,9 +105,12 @@ impl Card {
         } else {
             0
         };
-        let face = Self::get_card_face(id.clone(), next_face).await?;
+        let face = Database::get_card_face(card_id.clone(), next_face)
+            .await
+            .expect("failed to get next card face from db");
+        // .map_err(|_| MessageError::SQLQuery)?;
         Ok(Card::art_series(
-            id,
+            card_id,
             card_info.name,
             face,
             next_face,
@@ -169,83 +137,4 @@ impl Card {
         .on_press(Message::CardClicked { card_id: self.id() })
         .into()
     }
-
-    pub async fn get_image(
-        id: String,
-        url: String,
-        // size: ImageSize,
-    ) -> Result<(String, Bytes), MessageError> {
-        // TODO - I should handle this better.
-        let size = ImageSize::Small;
-        let image = download_image(url).await?;
-        spawn(Database::write_card_image_blob(
-            id.clone(),
-            size,
-            image.clone(),
-        ));
-        Ok((id, image))
-    }
-
-    async fn ensure_face_image(
-        card_id: String,
-        face_index: String,
-        uri: String,
-    ) -> Result<Option<Bytes>, MessageError> {
-        let image = download_image(uri).await?;
-        let cloned_image = image.clone();
-        spawn(Database::write_face_image_blob(
-            card_id,
-            face_index,
-            ImageSize::Small,
-            cloned_image,
-        ));
-        Ok(Some(image))
-    }
-
-    async fn get_card_face(
-        card_id: String,
-        face_index: usize,
-    ) -> Result<Option<Bytes>, MessageError> {
-        let conn = Database::connection()
-            .await
-            .map_err(|_| MessageError::SQLConnection)?;
-
-        let cloned_card_id = card_id.clone();
-        let face_index = face_index.clone();
-        let face_image_details = conn
-            .clone()
-            .call(move |conn| {
-                let mut stmt = conn.prepare(GET_CARD_FACE)?;
-                let card_face = stmt.query_row(
-                    &[
-                        (":card_id", &cloned_card_id),
-                        (":face_index", &face_index.to_string()),
-                    ],
-                    |row| {
-                        let small_uri: Option<String> = row.get(0)?;
-                        let small_blob: Option<BytesWrapper> = row.get(1)?;
-                        Ok((small_uri, small_blob.map(|sb| sb.0), face_index))
-                    },
-                )?;
-                Ok(card_face)
-            })
-            .await
-            .expect("Query shouldn't fail");
-        // .map_err(|_| MessageError::SQLQuery)?;
-        match face_image_details {
-            (_, Some(blob), _) => Ok(Some(blob)),
-            (Some(uri), None, _) => {
-                Self::ensure_face_image(card_id, face_index.to_string(), uri).await
-            }
-            (None, None, _) => Ok(None),
-        }
-    }
-}
-
-async fn download_image(url: String) -> Result<Bytes, MessageError> {
-    let response = reqwest::get(&url)
-        .await
-        .map_err(|_| MessageError::SQLQuery)?;
-    let bytes = response.bytes().await.map_err(|_| MessageError::SQLQuery)?;
-    Ok(bytes)
 }
