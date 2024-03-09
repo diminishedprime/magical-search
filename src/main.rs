@@ -137,20 +137,6 @@ impl Application for MagicalSearch {
                                         Some(CardDetail::loaded(card.clone()));
                                 }
                                 state.current_cards.contents[current_card_idx] = card;
-                                if let Card::Normal(_normal) =
-                                    &state.current_cards.contents[current_card_idx]
-                                {
-                                    // // TODO
-                                    // if normal.image().is_none() {
-                                    //     return Command::perform(
-                                    //         Card::get_image_action(
-                                    //             normal.id().to_string(),
-                                    //             normal.uri().unwrap(),
-                                    //         ),
-                                    //         Message::CardImageLoaded,
-                                    //     );
-                                    // }
-                                }
                             };
                         }
                         Err(e) => {
