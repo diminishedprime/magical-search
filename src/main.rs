@@ -23,7 +23,7 @@ use thiserror::Error;
 
 use crate::card_detail::CardDetail;
 
-static INITIAL_SEARCH: &str = r#"id=rakdos t:creature or pow:tou -pow:3 or o:"slivers""#;
+static INITIAL_SEARCH: &str = r#""#;
 
 use once_cell::sync::Lazy;
 

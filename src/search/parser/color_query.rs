@@ -23,6 +23,19 @@ pub enum ColorOperator {
     GreaterThanOrEqual,
 }
 
+impl ColorOperator {
+    pub fn describe(&self) -> &str {
+        match self {
+            Self::LessThan => "<",
+            Self::LessThanOrEqual => "<=",
+            Self::NotEqual => "!=",
+            Self::Equal => "=",
+            Self::GreaterThan => ">",
+            Self::GreaterThanOrEqual | Self::Colon => ">=",
+        }
+    }
+}
+
 // Colors and Color Identity
 // You can find cards that are a certain color using the c: or color: keyword,
 #[derive(Debug, PartialEq, Eq, Clone)]

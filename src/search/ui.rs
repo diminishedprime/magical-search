@@ -10,7 +10,11 @@ impl Search {
     pub fn view_parsed_search(&self, depth: usize, item: &ParsedSearch) -> Element<Message> {
         match item {
             ParsedSearch::Keyword(kw) => match kw {
-                super::SearchKeyword::ColorQuery(_) => todo!(),
+                super::SearchKeyword::ColorQuery(cq) => {
+                    let operator = cq.operator.describe();
+                    let color = cq.operand.describe();
+                    text(format!("color {operator} {color}")).into()
+                }
                 super::SearchKeyword::ColorIdentityQuery(ciq) => {
                     let operator = ciq.operator.describe();
                     let color = ciq.operand.describe();
@@ -25,12 +29,18 @@ impl Search {
                     let operand = &oq.oracle_text;
                     text(format!("oracle text contains {operand}")).into()
                 }
-                super::SearchKeyword::Name(_) => text("TODO: name controls").into(),
+                super::SearchKeyword::Name(n) => {
+                    let name = &n.text;
+                    text(format!(r#"name contains: "{name}""#)).into()
+                }
                 super::SearchKeyword::TypeLineQuery(tlq) => {
                     let operand = &tlq.operand;
                     text(format!(r#"type includes: "{operand}""#)).into()
                 }
-                super::SearchKeyword::Keyword(_) => todo!(),
+                super::SearchKeyword::Keyword(kw) => {
+                    let thing = &kw.keyword;
+                    text(format!(r#"keyword includes: "{thing}""#)).into()
+                }
             },
             ParsedSearch::Or(items) | ParsedSearch::And(items) => {
                 if items.len() == 1 {
@@ -41,7 +51,6 @@ impl Search {
                 } else {
                     "and"
                 };
-
                 let items: Vec<Element<Message>> = items
                     .iter()
                     .map(|item| self.view_parsed_search(depth + 1, item))
