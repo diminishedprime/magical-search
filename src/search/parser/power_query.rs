@@ -23,6 +23,19 @@ pub enum PowerOperator {
     GreaterThanOrEqual,
 }
 
+impl PowerOperator {
+    pub fn describe(&self) -> &str {
+        match self {
+            Self::LessThan => "less than",
+            Self::LessThanOrEqual => "less than or equal to",
+            Self::NotEqual => "not equal to",
+            Self::Equal | Self::Colon => "equal to",
+            Self::GreaterThan => "greater than",
+            Self::GreaterThanOrEqual => "greater than or equal to",
+        }
+    }
+}
+
 impl Display for PowerOperator {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
@@ -53,6 +66,12 @@ pub enum PowerOperand {
 impl PowerOperand {
     fn from_f64(num: f64) -> Self {
         Self::Number(num.to_string())
+    }
+    pub fn describe(&self) -> String {
+        match self {
+            PowerOperand::Number(num) => num.to_string(),
+            PowerOperand::Tougness => "toughness".to_string(),
+        }
     }
 }
 

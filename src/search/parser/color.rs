@@ -129,6 +129,42 @@ impl ColorOperand {
             _ => panic!("Invalid color combination: {:?}", colors),
         }
     }
+    pub fn describe(&self) -> String {
+        match self {
+            ColorOperand::Red => format!("red"),
+            ColorOperand::Blue => format!("blue"),
+            ColorOperand::Black => format!("black"),
+            ColorOperand::Green => format!("green"),
+            ColorOperand::White => format!("white"),
+            ColorOperand::Azorius => format!("azorius (white/blue)"),
+            ColorOperand::Boros => format!("boros (white/red)"),
+            ColorOperand::Dimir => format!("dimir (blue/black)"),
+            ColorOperand::Golgari => format!("golgari (black/green)"),
+            ColorOperand::Gruul => format!("gruul (red/green)"),
+            ColorOperand::Izzet => format!("izzet (blue/red)"),
+            ColorOperand::Orzhov => format!("orzhov (white/black)"),
+            ColorOperand::Rakdos => format!("rakdos (black/red)"),
+            ColorOperand::Selesnya => format!("selensya (white/green)"),
+            ColorOperand::Simic => format!("simic (blue/green)"),
+            ColorOperand::Colorless => format!("colorless"),
+            ColorOperand::Multicolor => format!("multicolor"),
+            ColorOperand::Abzan => format!("abzan (white/black/green)"),
+            ColorOperand::Jeskai => format!("jeskai (white/blue/red)"),
+            ColorOperand::Sultai => format!("sultai (blue/black/green)"),
+            ColorOperand::Mardu => format!("mardu (white/black/red)"),
+            ColorOperand::Temur => format!("temur (blue/red/green)"),
+            ColorOperand::Bant => format!("bant (white/blue/green)"),
+            ColorOperand::Esper => format!("esper (white/blue/black)"),
+            ColorOperand::Grixis => format!("grixis (blue/black/red)"),
+            ColorOperand::Jund => format!("jund (black/red/green)"),
+            ColorOperand::Naya => format!("naya (white/red/green)"),
+            ColorOperand::Aggression => format!("aggression (white/black/red/green)"),
+            ColorOperand::Altruism => format!("alturism (white/red/green/blue)"),
+            ColorOperand::Growth => format!("growth (white/blue/black/green)"),
+            ColorOperand::Artifice => format!("artifice (white/blue/black/red)"),
+            ColorOperand::WUBRG => format!("all colors"),
+        }
+    }
 }
 
 impl fmt::Display for ColorOperand {

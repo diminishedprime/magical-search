@@ -136,23 +136,23 @@ impl ColorIdentityQuery {
             .map(|c| format!("cards.{color}=TRUE", color = c))
             .collect()
     }
-    fn other_colors_true_and(&self) -> String {
-        self.difference_true().iter().join(" AND ")
-    }
+    // fn other_colors_true_and(&self) -> String {
+    //     self.difference_true().iter().join(" AND ")
+    // }
     fn other_colors_true_or(&self) -> String {
         self.difference_true().iter().join(" OR ")
     }
     fn other_colors_false_and(&self) -> String {
         self.difference_false().iter().join(" AND ")
     }
-    fn not_other_colors_true_and(&self) -> String {
-        let other_colors_true_and = self.other_colors_true_and();
-        if other_colors_true_and.is_empty() {
-            "".to_string()
-        } else {
-            format!("NOT ({other_colors_true_and})")
-        }
-    }
+    // fn not_other_colors_true_and(&self) -> String {
+    //     let other_colors_true_and = self.other_colors_true_and();
+    //     if other_colors_true_and.is_empty() {
+    //         "".to_string()
+    //     } else {
+    //         format!("NOT ({other_colors_true_and})")
+    //     }
+    // }
     fn not_other_colors_true_or(&self) -> String {
         let other_colors_true_and = self.other_colors_true_or();
         if other_colors_true_and.is_empty() {
@@ -180,7 +180,7 @@ impl ColorIdentityQuery {
         match (
             self.colors_true_or().as_str(),
             self.not_my_colors_true_and().as_str(),
-            self.not_other_colors_true_and().as_str(),
+            self.not_other_colors_true_or().as_str(),
         ) {
             (only, "", "") | ("", only, "") | ("", "", only) => format!("{only}"),
             (first, second, "") | ("", first, second) | (first, "", second) => {
@@ -540,7 +540,7 @@ mod tests {
     #[test]
     fn id_esper_less_than() {
         let actual = search::search("id<esper").unwrap().to_sql().where_clauses;
-        let expected = "(cards.B=TRUE OR cards.U=TRUE OR cards.W=TRUE) AND (NOT (cards.B=TRUE AND cards.U=TRUE AND cards.W=TRUE)) AND (NOT (cards.G=TRUE AND cards.R=TRUE))";
+        let expected = "(cards.B=TRUE OR cards.U=TRUE OR cards.W=TRUE) AND (NOT (cards.B=TRUE AND cards.U=TRUE AND cards.W=TRUE)) AND (NOT (cards.G=TRUE OR cards.R=TRUE))";
         assert_eq!(actual, expected);
     }
     #[test]
@@ -647,6 +647,13 @@ mod tests {
         let actual = search::search("id=rakdos").unwrap().to_sql().where_clauses;
         let expected =
             "cards.B=TRUE AND cards.R=TRUE AND NOT (cards.G=TRUE OR cards.U=TRUE OR cards.W=TRUE)";
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn id_rakdos_less_than() {
+        let actual = search::search("id<rakdos").unwrap().to_sql().where_clauses;
+        let expected = "(cards.B=TRUE OR cards.R=TRUE) AND (NOT (cards.B=TRUE AND cards.R=TRUE)) AND (NOT (cards.G=TRUE OR cards.U=TRUE OR cards.W=TRUE))";
         assert_eq!(actual, expected);
     }
 }

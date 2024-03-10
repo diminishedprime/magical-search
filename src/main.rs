@@ -14,7 +14,7 @@ use iced::{
     widget::{
         column,
         container::{visible_bounds, Id},
-        text, Container, TextInput,
+        row, text, Container,
     },
     Alignment, Application, Command, Length, Rectangle, Settings, Theme,
 };
@@ -23,7 +23,7 @@ use thiserror::Error;
 
 use crate::card_detail::CardDetail;
 
-static INITIAL_SEARCH: &str = r#""#;
+static INITIAL_SEARCH: &str = r#"id=rakdos t:creature or pow:tou -pow:3 or o:"slivers""#;
 
 use once_cell::sync::Lazy;
 
@@ -34,7 +34,7 @@ pub static ROWS: usize = 3;
 pub static LIMIT: usize = CARDS_PER_ROW * ROWS;
 
 const SPACING_SMALL: u16 = 2;
-// const SPACING_MEDIUM: u16 = SPACING_SMALL * 2;
+const SPACING_MEDIUM: u16 = SPACING_SMALL * 2;
 // const SPACING_LARGE: u16 = SPACING_SMALL * 3;
 
 enum MagicalSearch {
@@ -228,27 +228,30 @@ impl Application for MagicalSearch {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message, Self::Theme, iced::Renderer> {
-        let content = match self {
-            MagicalSearch::Loading => {
-                column![text("Loading inital view.").size(40),].width(Length::Shrink)
-            }
+        let content: iced::Element<Message> = match self {
+            MagicalSearch::Loading => column![text("Loading inital view.").size(40),]
+                .width(Length::Shrink)
+                .into(),
             MagicalSearch::Loaded { state } => {
                 if let Some(selected_card) = &state.selected_card_detail {
-                    column![selected_card.view()]
+                    column![selected_card.view()].into()
                 } else {
                     let visible_check =
                         Container::new(text("End of the line")).id(SCROLLABLE_CONTAINER.clone());
                     let cards = state.current_cards.view();
-                    let text_input = TextInput::new("Search", &state.search.input_text)
-                        .on_input(|input| Message::SearchInputChanged(input));
-                    column![text_input, cards, visible_check]
-                        .align_items(Alignment::Center)
-                        .padding(SPACING_SMALL)
+                    let search = state.search.view(0);
+                    let cards = iced::widget::scrollable(
+                        column![cards, visible_check]
+                            .align_items(Alignment::Center)
+                            .padding(SPACING_SMALL),
+                    )
+                    .on_scroll(|_| Message::Scrolled);
+                    row!(search, cards).into()
                 }
             }
         };
 
-        Container::new(iced::widget::scrollable(content).on_scroll(|_| Message::Scrolled))
+        Container::new(content)
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(SPACING_SMALL)
@@ -260,5 +263,6 @@ impl Application for MagicalSearch {
 pub fn main() -> iced::Result {
     let mut settings = Settings::default();
     settings.window.size.height = settings.window.size.height + 200.0;
+    settings.window.size.width = settings.window.size.height + 400.0;
     MagicalSearch::run(settings)
 }

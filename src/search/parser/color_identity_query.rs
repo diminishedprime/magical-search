@@ -23,6 +23,19 @@ pub enum ColorIdentityOperator {
     GreaterThanOrEqual,
 }
 
+impl ColorIdentityOperator {
+    pub fn describe(&self) -> &str {
+        match self {
+            Self::LessThan => "<",
+            Self::LessThanOrEqual | Self::Colon => "<=",
+            Self::NotEqual => "!=",
+            Self::Equal => "=",
+            Self::GreaterThan => ">",
+            Self::GreaterThanOrEqual => ">=",
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ColorIdentityQuery {
     pub operator: ColorIdentityOperator,
