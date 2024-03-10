@@ -74,12 +74,20 @@ impl Database {
             .parsed_search
             .map(|s| s.to_sql())
             .unwrap_or(SQL::default());
+        let mut joins = s.joins();
+        if !joins.is_empty() {
+            joins = format!("\n{joins}");
+        }
+        let mut clauses = s.wheres();
+        if !clauses.is_empty() {
+            clauses = format!("\n{clauses}");
+        }
         let sql = format!(
             include_str!("get_ids_with_clauses.sql"),
-            joins = s.joins(),
-            clauses = s.wheres()
+            joins = joins,
+            clauses = clauses
         );
-        // println!("{}", sql);
+        // println!("{}\n", sql);
         sql
     }
 
